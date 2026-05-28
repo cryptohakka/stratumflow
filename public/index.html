@@ -3,733 +3,651 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Arcana — Adaptive Portfolio Manager</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<title>StratumFlow</title>
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-:root{
-  --bg:#0a1628;
-  --surface:#0f1e35;
-  --surface2:#162440;
-  --surface3:#1d2e4e;
-  --border:#1e3255;
-  --border2:#243d68;
-  --text:#e8edf4;
-  --text2:#8da3bf;
-  --text3:#4a6380;
-  --accent:#4d9fff;
-  --accent-dim:rgba(77,159,255,0.1);
-  --accent-border:rgba(77,159,255,0.25);
-  --ok:#22c55e;
-  --ok-dim:rgba(34,197,94,0.1);
-  --ok-border:rgba(34,197,94,0.25);
-  --danger:#ef4444;
-  --danger-dim:rgba(239,68,68,0.1);
-  --danger-border:rgba(239,68,68,0.25);
-  --warn:#f59e0b;
-  --warn-dim:rgba(245,158,11,0.1);
-  --mono:'JetBrains Mono',monospace;
-  --sans:'Inter',sans-serif;
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --m-bg: #0a1a12;
+  --m-surface: #0f2318;
+  --m-surface2: #152d1e;
+  --m-border: rgba(0,255,160,0.12);
+  --m-border2: rgba(0,255,160,0.25);
+  --m-green: #00c97a;
+  --m-green-dim: rgba(0,201,122,0.15);
+  --m-cyan: #00e5c8;
+  --m-yellow: #f0c94a;
+  --m-red: #f05a5a;
+  --m-text: #d4f0e4;
+  --m-muted: #6b9980;
+  --m-label: #4a7a60;
+}
+html, body { background: var(--m-bg); color: var(--m-text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+.wrap { padding: 1.5rem 1rem; max-width: 1400px; margin: 0 auto; }
+
+.header { display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem; }
+.logo { width: 28px; height: 28px; flex-shrink: 0; }
+.header h1 { font-size: 18px; font-weight: 500; color: var(--m-green); letter-spacing: 0.04em; }
+.header-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--m-green); animation: pulse 2s infinite; }
+.status-text { font-size: 12px; color: var(--m-muted); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* 3-column layout — equal width */
+.columns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; align-items: start; }
+@media (max-width: 900px) { .columns { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 600px) { .columns { grid-template-columns: 1fr; } }
+
+.card {
+  background: var(--m-surface);
+  border: 1px solid var(--m-border);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 12px;
+}
+.card-title { font-size: 11px; color: var(--m-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; }
+
+/* Portfolio */
+.portfolio-row { display: grid; grid-template-columns: 62px 1fr 52px 42px; align-items: center; gap: 6px; padding: 5px 0; border-bottom: 1px solid var(--m-border); }
+.portfolio-row .points-badges { grid-column: 1 / -1; display: flex; justify-content: flex-end; margin-top: 2px; }
+.portfolio-header { display: grid; grid-template-columns: 62px 1fr 52px 42px; gap: 6px; padding: 0 0 5px 0; border-bottom: 1px solid var(--m-border2); margin-bottom: 2px; }
+.portfolio-header span { font-size: 9px; color: var(--m-label); text-transform: uppercase; letter-spacing: 0.06em; }
+.portfolio-header .ph-bal { text-align: right; }
+.portfolio-header .ph-usd { text-align: right; }
+.portfolio-header .ph-apy { text-align: right; }
+.portfolio-row:last-child { border-bottom: none; }
+.portfolio-row.active { background: rgba(0,201,122,0.05); border-radius: 5px; margin: 0 -4px; padding: 5px 4px; }
+.portfolio-row.active .portfolio-sym { color: var(--row-color, var(--m-green)); font-weight: 600; }
+.portfolio-row.active .portfolio-bar { background: var(--row-color, var(--m-green)) !important; }
+.portfolio-sym { font-size: 12px; color: var(--m-text); }
+.portfolio-amt { font-size: 11px; color: var(--m-muted); text-align: right; }
+.portfolio-usd { font-size: 11px; color: var(--m-muted); text-align: right; }
+.portfolio-apy { font-size: 11px; color: var(--m-muted); text-align: right; }
+.portfolio-row.active .portfolio-apy { color: var(--row-color, var(--m-green)); }
+.portfolio-total { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--m-border2); }
+.portfolio-total-label { font-size: 11px; color: var(--m-muted); }
+.portfolio-total-val { font-size: 16px; font-weight: 500; color: var(--m-green); }
+
+/* Portfolio sections */
+.portfolio-section-title { font-size: 10px; color: var(--m-label); text-transform: uppercase; letter-spacing: 0.08em; margin: 10px 0 6px 0; }
+.portfolio-section-title:first-child { margin-top: 0; }
+.portfolio-divider { border: none; border-top: 1px solid var(--m-border2); margin: 8px 0; }
+
+/* Actions */
+.actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.btn { padding: 7px 14px; border-radius: 8px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid var(--m-border2); background: transparent; color: var(--m-green); transition: background 0.15s; outline: none; }
+.btn:hover { background: var(--m-green-dim); }
+.btn-primary { background: var(--m-green-dim); }
+.btn-warn { color: var(--m-yellow); border-color: rgba(240,201,74,0.3); }
+.btn-warn:hover { background: rgba(240,201,74,0.08); }
+.btn-danger { color: var(--m-red); border-color: rgba(240,90,90,0.3); }
+.btn-danger:hover { background: rgba(240,90,90,0.08); }
+.btn-white { color: #d4f0e4; border-color: rgba(212,240,228,0.3); }
+.btn-white:hover { background: rgba(212,240,228,0.08); }
+.btn-green { color: var(--m-green); border-color: rgba(0,201,122,0.4); background: var(--m-green-dim); }
+.btn-green:hover { background: rgba(0,201,122,0.25); }
+
+/* ===== UNIFIED REGIME + COUNCIL CARD ===== */
+.regime-unified {
+  background: var(--m-surface);
+  border: 1px solid var(--m-border2);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 12px;
+  position: relative;
+}
+.regime-unified::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 3px;
+  background: var(--accent, var(--m-green));
+  transition: background 0.4s;
+}
+.regime-top {
+  padding: 1rem 1.25rem 0.75rem;
+  border-bottom: 1px solid var(--m-border);
+}
+.regime-label { font-size: 11px; color: var(--m-muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+.regime-value { font-size: 26px; font-weight: 500; transition: color 0.4s; }
+.regime-meta { display: flex; gap: 1.2rem; margin-top: 10px; flex-wrap: wrap; }
+.meta-item { display: flex; flex-direction: column; gap: 3px; }
+.meta-label { font-size: 10px; color: var(--m-label); }
+.meta-val { font-size: 13px; font-weight: 500; color: var(--m-text); }
+.conf-bar-wrap { width: 60px; background: rgba(255,255,255,0.05); border-radius: 3px; height: 4px; margin-top: 4px; }
+.conf-bar { height: 4px; border-radius: 3px; transition: width 0.5s, background 0.4s; }
+
+/* Council section inside unified card */
+.council-section { padding: 0.75rem 1.25rem; }
+.council-section-label { font-size: 10px; color: var(--m-label); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+
+.council-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: flex-start; }
+.council-row:last-child { margin-bottom: 0; }
+.council-badge { font-size: 10px; padding: 2px 7px; border-radius: 4px; flex-shrink: 0; font-weight: 500; margin-top: 1px; white-space: nowrap; }
+.badge-arch { background: rgba(0,229,200,0.12); color: var(--m-cyan); }
+.badge-aud  { background: rgba(240,201,74,0.12); color: var(--m-yellow); }
+.badge-arb  { background: rgba(0,201,122,0.12);  color: var(--m-green); }
+.council-text { font-size: 11px; color: var(--m-muted); line-height: 1.5; }
+
+/* Strategy objective */
+.regime-objective {
+  font-size: 12px; color: var(--m-muted); margin-top: 4px; letter-spacing: 0.01em;
+  font-style: italic;
 }
 
-.regime-pill{display:flex;align-items:center;gap:6px;padding:3px 10px;border-radius:20px;border:1px solid var(--border2);font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:0.05em;color:var(--text2);transition:all 0.3s;}
-.regime-pill.risk_on{border-color:var(--ok-border);color:var(--ok);background:var(--ok-dim);}
-.regime-pill.risk_off{border-color:var(--danger-border);color:var(--danger);background:var(--danger-dim);}
-.rp-dot{width:5px;height:5px;border-radius:50%;background:currentColor;}
-html,body{height:100%;font-family:var(--sans);background:var(--bg);color:var(--text);overflow:hidden;}
-body::before{content:'';position:fixed;inset:0;pointer-events:none;background-image:radial-gradient(circle,rgba(77,159,255,0.04) 1px,transparent 1px);background-size:28px 28px;}
-.app{display:grid;grid-template-rows:auto 1fr;height:100vh;position:relative;z-index:1;}
-nav{display:flex;align-items:center;padding:0 24px;height:52px;background:var(--surface);border-bottom:1px solid var(--border);gap:24px;}
-.logo{font-family:var(--mono);font-size:13px;font-weight:500;letter-spacing:0.12em;color:var(--text);text-decoration:none;}
-.nav-div{width:1px;height:16px;background:var(--border2);}
-.nav-sub{font-size:11px;color:var(--text3);}
-.nav-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
-.sys-dot{width:6px;height:6px;border-radius:50%;background:var(--ok);box-shadow:0 0 5px var(--ok);animation:blink 3s ease-in-out infinite;}
-@keyframes blink{0%,100%{opacity:1;}50%{opacity:0.3;}}
-.sys-dot.off{background:var(--danger);box-shadow:0 0 5px var(--danger);animation:none;}
-.nav-btn{display:flex;align-items:center;gap:7px;padding:5px 13px;border-radius:6px;border:1px solid var(--border2);background:transparent;font-family:var(--mono);font-size:10px;font-weight:500;color:var(--text2);cursor:pointer;letter-spacing:0.04em;transition:all 0.15s;}
-.nav-btn:hover{border-color:var(--accent-border);color:var(--accent);background:var(--accent-dim);}
-.nav-btn.connected{border-color:var(--ok-border);color:var(--ok);background:var(--ok-dim);}
-main{display:flex;flex-direction:column;overflow:hidden;min-height:0;}
-.tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;}
-.tab{padding:13px 14px;font-family:var(--mono);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;color:var(--text3);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.15s;}
-.tab:hover{color:var(--text2);}
-.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
-.tab-r{margin-left:auto;display:flex;align-items:center;}
-.tab-r-txt{font-family:var(--mono);font-size:9px;color:var(--text3);}
-.panel{display:none;flex:1;overflow:hidden;flex-direction:column;}
-.panel.active{display:flex;}
-.ov-scroll{flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:14px;}
-.ov-scroll::-webkit-scrollbar{width:3px;}
-.ov-scroll::-webkit-scrollbar-thumb{background:var(--border2);}
-.sig-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
-.sig-c{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:13px 15px;}
-.sig-lbl{font-family:var(--mono);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;}
-.sig-val{font-family:var(--mono);font-size:22px;font-weight:500;color:var(--text);letter-spacing:-0.02em;}
-.sig-val.ok{color:var(--ok);}
-.sig-val.danger{color:var(--danger);}
-.sig-val.warn{color:var(--warn);}
-.sig-sub{font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:4px;}
-.sig-sub.ok{color:var(--ok);}
-.sig-sub.danger{color:var(--danger);}
-.card-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
-.card-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
-.ov-card{background:var(--surface);border:1px solid var(--border);border-radius:7px;overflow:hidden;}
-.ov-hdr{display:flex;align-items:center;justify-content:space-between;padding:11px 15px;border-bottom:1px solid var(--border);}
-.ov-title{font-family:var(--mono);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text2);}
-.ov-sub{font-family:var(--mono);font-size:9px;color:var(--text3);}
-.ov-body{padding:13px 15px;}
-.reasoning-card{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:14px 16px;display:flex;align-items:flex-start;gap:14px;}
-.rc-bar-v{width:3px;border-radius:2px;align-self:stretch;flex-shrink:0;background:var(--border2);transition:background 0.4s;}
-.rc-bar-v.risk_on{background:var(--ok);}
-.rc-bar-v.risk_off{background:var(--danger);}
-.rc-content{flex:1;min-width:0;}
-.rc-phase{font-size:16px;font-weight:500;color:var(--text);margin-bottom:5px;}
-.rc-reason{font-size:11px;color:var(--text2);line-height:1.6;}
-.ub-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;}
-.ub-row:not(:last-child){border-bottom:1px solid var(--border);}
-.ub-left{display:flex;align-items:center;gap:8px;}
-.ub-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
-.ub-chain{font-family:var(--mono);font-size:10px;color:var(--text2);}
-.ub-badge{font-family:var(--mono);font-size:8px;padding:1px 5px;border-radius:2px;background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-border);}
-.ub-val{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--text);}
-.ub-val.ok{color:var(--ok);}
-.ub-usdc{font-size:9px;color:var(--text3);margin-left:3px;}
-.spark{display:flex;align-items:flex-end;gap:2px;height:40px;width:100%;}
-.spark-b{flex:1;border-radius:1px;background:rgba(77,159,255,0.25);min-height:2px;transition:background 0.2s;}
-.spark-b:hover{background:var(--accent);}
-.deposit-box{background:var(--surface2);border:1px solid var(--accent-border);border-radius:6px;padding:11px 13px;margin-top:10px;}
-.deposit-lbl{font-family:var(--mono);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-bottom:5px;}
-.deposit-addr{font-family:var(--mono);font-size:10px;color:var(--accent);word-break:break-all;cursor:pointer;line-height:1.5;}
-.deposit-addr:hover{text-decoration:underline;}
-.deposit-hint{font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:4px;}
-.log-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden;}
-.log-bar{display:flex;align-items:center;gap:10px;padding:9px 24px;background:var(--surface);border-bottom:1px solid var(--border);}
-.log-dots{display:flex;gap:5px;}
-.ld{width:10px;height:10px;border-radius:50%;}
-.log-title{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:0.07em;text-transform:uppercase;}
-.log-clr{background:none;border:1px solid var(--border);border-radius:3px;padding:3px 9px;font-family:var(--mono);font-size:9px;color:var(--text3);cursor:pointer;margin-left:auto;transition:all 0.15s;}
-.log-clr:hover{border-color:var(--border2);color:var(--text2);}
-#log{flex:1;overflow-y:auto;padding:16px 24px;font-family:var(--mono);font-size:11px;line-height:1.8;color:var(--text2);}
-#log::-webkit-scrollbar{width:3px;}
-#log::-webkit-scrollbar-thumb{background:var(--border2);}
-.ll{display:block;opacity:0;transform:translateX(-3px);animation:li 0.12s ease forwards;}
-@keyframes li{to{opacity:1;transform:none;}}
-.ll.ok{color:var(--ok);}
-.ll.danger{color:var(--danger);}
-.ll.warn{color:var(--warn);}
-.ll.accent{color:var(--accent);}
-.ll.dim{color:var(--text3);font-size:10px;}
-.hist-wrap{flex:1;overflow-y:auto;padding:20px 24px;}
-.hist-wrap::-webkit-scrollbar{width:3px;}
-.hist-wrap::-webkit-scrollbar-thumb{background:var(--border2);}
-.tx-card{display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--surface);border:1px solid var(--border);border-radius:7px;margin-bottom:8px;transition:border-color 0.15s;}
-.tx-card:hover{border-color:var(--border2);}
-.tx-ico{width:34px;height:34px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
-.tx-ico.bridge{background:var(--accent-dim);border:1px solid var(--accent-border);}
-.tx-ico.on{background:var(--ok-dim);border:1px solid var(--ok-border);}
-.tx-ico.off{background:var(--danger-dim);border:1px solid var(--danger-border);}
-.tx-body{flex:1;min-width:0;}
-.tx-type{font-size:12px;font-weight:500;color:var(--text);}
-.tx-meta{font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:2px;}
-.tx-right{text-align:right;flex-shrink:0;}
-.tx-amt{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--text);}
-.tx-time{font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:2px;}
-.tx-hash{font-family:var(--mono);font-size:9px;color:var(--accent);cursor:pointer;margin-top:2px;}
-.tx-hash:hover{text-decoration:underline;}
-.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text3);gap:8px;}
-.empty-icon{font-size:24px;opacity:0.2;}
-.empty-txt{font-family:var(--mono);font-size:10px;letter-spacing:0.06em;}
-.modal-bg{display:none;position:fixed;inset:0;background:rgba(5,12,24,0.8);z-index:100;align-items:center;justify-content:center;backdrop-filter:blur(2px);}
-.modal-bg.open{display:flex;}
-.modal{background:var(--surface);border:1px solid var(--border2);border-radius:9px;padding:22px;width:360px;}
-.modal-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px;}
-.modal-desc{font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:18px;}
-.modal-row{display:flex;gap:7px;}
-.mb{flex:1;padding:9px;border-radius:5px;border:1px solid var(--border2);background:transparent;font-family:var(--mono);font-size:10px;color:var(--text2);cursor:pointer;letter-spacing:0.04em;transition:all 0.15s;}
-.mb:hover{border-color:var(--border);color:var(--text);}
-.mb.ok-mb{border-color:var(--ok-border);color:var(--ok);background:var(--ok-dim);}
-.mb.ok-mb:hover{border-color:var(--ok);}
-.mb.danger-mb{border-color:var(--danger-border);color:var(--danger);background:var(--danger-dim);}
-.mb.danger-mb:hover{border-color:var(--danger);}
-.toast{position:fixed;bottom:18px;right:18px;z-index:200;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:10px 14px;font-family:var(--mono);font-size:10px;color:var(--text);display:flex;align-items:center;gap:8px;transform:translateY(50px);opacity:0;transition:all 0.2s ease;max-width:300px;}
-.toast.show{transform:translateY(0);opacity:1;}
-.toast.ok{border-left:2px solid var(--ok);}
-.toast.danger{border-left:2px solid var(--danger);}
-.toast.warn{border-left:2px solid var(--warn);}
-.spin{display:inline-block;width:9px;height:9px;border:1.5px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:sp 0.6s linear infinite;vertical-align:middle;margin-right:5px;}
-@keyframes sp{to{transform:rotate(360deg);}}
-.col-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:stretch;}
-.col-left,.col-right{display:flex;flex-direction:column;gap:8px;}
-@media(max-width:900px){.col-2{grid-template-columns:1fr;}}
+/* Confidence low state */
+.regime-unified.low-conf { opacity: 0.88; }
+.regime-unified.low-conf .regime-value::after {
+  content: ' — UNCERTAIN';
+  font-size: 13px; font-weight: 400; color: var(--m-muted); letter-spacing: 0.05em;
+}
+.regime-unified.low-conf .arbiter-row {
+  border-color: rgba(240,201,74,0.3) !important;
+  background: rgba(240,201,74,0.04) !important;
+}
+.regime-unified.low-conf .arbiter-verdict-label {
+  color: var(--m-yellow) !important;
+}
+
+/* Signal chips */
+.signal-chips {
+  display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px;
+}
+.signal-chip {
+  font-size: 10px; padding: 2px 8px; border-radius: 20px;
+  font-weight: 500; letter-spacing: 0.03em;
+  border: 1px solid transparent;
+}
+.chip-pos { color: var(--m-green); background: rgba(0,201,122,0.1); border-color: rgba(0,201,122,0.2); }
+.chip-neg { color: var(--m-red);   background: rgba(240,90,90,0.1);  border-color: rgba(240,90,90,0.2); }
+.chip-neu { color: var(--m-muted); background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.08); }
+.arbiter-row {
+  background: rgba(0,201,122,0.06);
+  border: 1px solid rgba(0,201,122,0.2);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-top: 10px;
+}
+.arbiter-verdict-label {
+  font-size: 9px;
+  color: var(--m-green);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 5px;
+  font-weight: 600;
+}
+.arbiter-verdict-text {
+  font-size: 12px;
+  color: var(--m-text);
+  line-height: 1.55;
+}
+
+/* Divider between Arch/Aud and Arbiter */
+.council-deliberation { margin-bottom: 0; }
+.council-deliberation .council-row { opacity: 0.75; }
+
+/* Alloc grid */
+.alloc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+.alloc-col {
+  background: var(--m-surface);
+  border: 1px solid var(--m-border);
+  border-radius: 10px;
+  padding: 0.75rem 0.875rem;
+  position: relative;
+  transition: border-color 0.3s, opacity 0.3s;
+  opacity: 0.45;
+  display: flex;
+  flex-direction: column;
+}
+.alloc-col .alloc-apy { margin-top: auto; padding-top: 6px; }
+.alloc-col::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--col-accent, #4a7a60); transition: background 0.3s; border-radius: 10px 10px 0 0; }
+.alloc-col.active { border-color: var(--col-accent, #4a7a60); opacity: 1; }
+.alloc-col-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--col-accent, #6b9980); margin-bottom: 8px; font-weight: 500; }
+.alloc-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+.alloc-row:last-of-type { margin-bottom: 0; }
+.alloc-name { font-size: 11px; color: var(--m-text); width: 64px; flex-shrink: 0; }
+.alloc-bar-wrap { flex: 1; background: rgba(255,255,255,0.05); border-radius: 3px; height: 4px; }
+.alloc-bar { height: 4px; border-radius: 3px; transition: width 0.5s; }
+.alloc-pct { font-size: 10px; color: var(--m-muted); width: 26px; text-align: right; flex-shrink: 0; }
+.alloc-token-apy { font-size: 10px; color: var(--m-muted); margin: -3px 0 4px 0; padding-left: 70px; display: flex; align-items: center; gap: 4px; }
+.alloc-apy { font-size: 10px; color: var(--m-muted); margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--m-border); display: flex; justify-content: space-between; align-items: center; }
+.alloc-apy-val { font-size: 12px; font-weight: 500; color: var(--col-accent, #6b9980); }
+
+/* Log (right column) */
+.log-card {
+  background: var(--m-surface);
+  border: 1px solid var(--m-border);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  position: sticky;
+  top: 1rem;
+}
+.log-card-title {
+  font-size: 11px; color: var(--m-muted); text-transform: uppercase; letter-spacing: 0.08em;
+  margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+}
+.log-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--m-green); animation: pulse 2s infinite; display: inline-block; }
+.log-body {
+  font-size: 11px; font-family: 'SF Mono', 'Fira Code', monospace;
+  color: var(--m-muted); overflow-y: auto; overflow-x: hidden;
+  min-height: 200px;
+  max-height: calc(100vh - 160px);
+}
+.log-line { padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.03); line-height: 1.6; word-break: break-all; overflow-wrap: anywhere; }
+.log-line:last-child { border-bottom: none; }
+
+/* Points badges */
+.points-badges { display: flex; gap: 3px; }
+.points-badge { font-size: 8px; padding: 1px 4px; border-radius: 3px; background: rgba(138,99,210,0.15); color: #a78bfa; font-weight: 600; position: relative; cursor: pointer; }
+.points-badge .tip {
+  display: none; position: fixed; width: 220px;
+  background: #111; border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 6px; padding: 7px 9px; font-size: 10px;
+  color: #fff; font-weight: 400; line-height: 1.5;
+  z-index: 9999; pointer-events: none; white-space: normal;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+}
+.points-badge .tip a { color: #60d4a0; text-decoration: none; }
 </style>
 </head>
 <body>
-<div class="app">
+<div class="wrap">
 
-<nav>
-  <a class="logo" href="#">ARCANA</a>
-  <div class="nav-div"></div>
-  <span class="nav-sub">Adaptive Portfolio Manager · Arc Testnet</span>
-  <div class="nav-right" style="gap:14px;">
-    <div class="regime-pill" id="navRegime"><div class="rp-dot"></div><span id="navTxt">DETECTING</span></div>
-    <div style="display:flex;align-items:center;gap:6px;">
-      <span style="font-family:var(--mono);font-size:9px;letter-spacing:0.08em;color:var(--text3);">CONF</span>
-      <div style="width:56px;height:2px;background:var(--border2);border-radius:1px;"><div id="confFill" style="height:100%;border-radius:1px;background:var(--accent);width:0%;transition:width 0.6s ease;"></div></div>
-      <span style="font-family:var(--mono);font-size:11px;font-weight:500;color:var(--accent);" id="confNum">—</span>
+  <div class="header">
+    <svg class="logo" viewBox="0 0 28 28" fill="none">
+      <circle cx="14" cy="14" r="13" stroke="#00c97a" stroke-width="1.5"/>
+      <path d="M8 14 L14 8 L20 14 L14 20 Z" stroke="#00c97a" stroke-width="1.5" fill="rgba(0,201,122,0.1)"/>
+      <circle cx="14" cy="14" r="2.5" fill="#00c97a"/>
+    </svg>
+    <h1>StratumFlow</h1>
+    <div class="header-right">
+      <span class="status-dot" id="status-dot"></span>
+      <span class="status-text" id="status-text">connecting...</span>
     </div>
-    <div class="sys-dot" id="sysDot"></div>
-    <button class="nav-btn" id="connectBtn" onclick="connectWallet()"><span id="connectLabel">Connect Wallet</span></button>
-  </div>
-</nav>
-
-
-<main style="height:calc(100vh - 52px);min-height:0;">
-  <div class="tabs">
-    <button class="tab active" onclick="switchTab('overview',this)">Overview</button>
-    <button class="tab" onclick="switchTab('log',this)">Live Log</button>
-    <button class="tab" onclick="switchTab('history',this)">Tx History</button>
-    <div class="tab-r"><span class="tab-r-txt">Interval 1h · Arc Testnet</span></div>
   </div>
 
-  <!-- OVERVIEW -->
-  <div class="panel active" id="panel-overview">
-    <div class="ov-scroll">
-      <div class="col-2" style="width:100%;">
-        <!-- LEFT: Portfolio debank style -->
-        <div class="col-left">
-          <div class="ov-card">
-            <div class="ov-hdr">
-              <span class="ov-title">Portfolio</span>
-              <span style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--text1);" id="portfolioTotal">$—</span>
+  <div class="columns">
+
+    <!-- COL 1: Portfolio + Actions -->
+    <div>
+      <div class="card">
+        <div class="card-title">portfolio</div>
+        <div class="portfolio-section-title">holdings</div>
+        <div class="portfolio-header"><span>asset</span><span class="ph-bal">balance</span><span class="ph-usd">usd</span><span class="ph-apy">apy</span></div>
+        <div id="portfolio-rows">
+          <div class="portfolio-row"><span class="portfolio-sym">—</span><span class="portfolio-amt">—</span><span class="portfolio-usd">—</span><span class="portfolio-apy">—</span></div>
+        </div>
+        <hr class="portfolio-divider">
+        <div class="portfolio-section-title">aave vault</div>
+        <div class="portfolio-header"><span>asset</span><span class="ph-bal">balance</span><span class="ph-usd">usd</span><span class="ph-apy">apy</span></div>
+        <div id="aave-rows">
+          <div class="portfolio-row"><span class="portfolio-sym">—</span><span class="portfolio-amt">—</span><span class="portfolio-usd">—</span><span class="portfolio-apy">—</span></div>
+        </div>
+        <div class="portfolio-total">
+          <span class="portfolio-total-label">total value</span>
+          <span class="portfolio-total-val" id="portfolio-total">—</span>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-white" onclick="post('/api/regime-check')">Regime check</button>
+        <button class="btn btn-green" onclick="forceRegime('risk_on')">Risk-on</button>
+        <button class="btn btn-warn" onclick="forceRegime('neutral')">Neutral</button>
+        <button class="btn btn-danger" onclick="forceRegime('risk_off')">Risk-off</button>
+      </div>
+    </div>
+
+    <!-- COL 2: Regime + Council + Alloc -->
+    <div>
+
+      <!-- Unified Regime + Council card -->
+      <div class="regime-unified" id="regime-card" style="--accent:#f05a5a;">
+
+        <!-- Top: regime state + market data -->
+        <div class="regime-top">
+          <div class="regime-label">current regime</div>
+          <div class="regime-value" id="regime-val" style="color:#f05a5a;">—</div>
+          <div class="regime-objective" id="regime-objective">—</div>
+          <div class="regime-meta">
+            <div class="meta-item">
+              <span class="meta-label">BTC price</span>
+              <span class="meta-val" id="btc-price">—</span>
             </div>
-            <div class="ov-body" style="padding:0;">
-
-              <!-- Circle Wallet -->
-              <div style="padding:10px 14px;border-bottom:1px solid var(--border);">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                  <div style="display:flex;align-items:center;gap:6px;">
-                    <div class="ub-dot" style="background:#7b5ea7;"></div>
-                    <span style="font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text2);">Circle Wallet</span>
-                    <span class="ub-badge" style="background:rgba(123,94,167,0.15);color:#a78bda;border-color:rgba(123,94,167,0.3);">Arc Testnet</span>
-                  </div>
-                  <span style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text1);"><span id="ubCircle">—</span><span style="color:var(--text3);font-size:9px;margin-left:3px;">USDC</span></span>
-                </div>
-                <div id="depositSection"></div>
-                <div id="withdrawSection" style="display:none;margin-top:6px;">
-                  <button id="withdrawBtn" onclick="doWithdraw()" style="background:rgba(123,94,167,0.2);border:1px solid rgba(123,94,167,0.4);color:#a78bda;font-family:var(--mono);font-size:10px;padding:4px 10px;border-radius:4px;cursor:pointer;">Withdraw All →EOA</button>
-                  <div id="withdrawStatus" style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:4px;"></div>
-                </div>
-              </div>
-
-              <!-- Unified Balance -->
-              <div style="padding:10px 14px;border-bottom:1px solid var(--border);">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                  <div style="display:flex;align-items:center;gap:6px;">
-                    <div class="ub-dot" style="background:var(--ok);"></div>
-                    <span style="font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text2);">Unified Balance</span>
-                    <span class="ub-badge">App Kit</span>
-                  </div>
-                  <span style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--ok);"><span id="ubTotal">—</span><span style="color:var(--text3);font-size:9px;margin-left:3px;">USDC</span></span>
-                </div>
-                <div id="ubChainList"></div>
-              </div>
-
-              <!-- Vault -->
-              <div style="padding:10px 14px;">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                  <div style="display:flex;align-items:center;gap:6px;">
-                    <div class="ub-dot" style="background:#facc15;"></div>
-                    <span style="font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text2);">Vault</span>
-                  </div>
-                  <span style="font-family:var(--mono);font-size:13px;font-weight:600;color:#facc15;" id="vaultTotal">$—</span>
-                </div>
-                <div id="vaultPosition">
-                  <div style="color:var(--text3);font-family:var(--mono);font-size:11px;text-align:center;padding:8px;">No active position</div>
-                </div>
-              </div>
-
+            <div class="meta-item">
+              <span class="meta-label">phase</span>
+              <span class="meta-val" id="phase">—</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">confidence</span>
+              <span class="meta-val" id="conf-val">—</span>
+              <div class="conf-bar-wrap"><div class="conf-bar" id="conf-bar" style="width:0%"></div></div>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">funding rate</span>
+              <span class="meta-val" id="funding">—</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">signal score</span>
+              <span class="meta-val" id="signal-score">—</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">updated</span>
+              <span class="meta-val" id="updated-at">—</span>
             </div>
           </div>
         </div>
-        <!-- RIGHT: Regime + Signals + BTC -->
-        <div class="col-right">
-          <div class="ov-card" style="position:relative;overflow:hidden;">
-            <div class="ov-body" style="padding:14px 16px;">
-              <div class="rc-bar-v" id="rcBarV" style="position:absolute;left:0;top:0;bottom:0;width:3px;"></div>
-              <div style="padding-left:10px;">
-                <div class="rc-phase" id="rcPhase" style="font-size:20px;font-weight:700;margin-bottom:6px;">Awaiting...</div>
-                <div class="rc-reason" id="rcReason" style="color:var(--text3);font-size:11px;line-height:1.5;">3-agent analysis running in background</div>
-                <div id="councilPanel" style="margin-top:10px;display:none;border-top:1px solid var(--border);padding-top:10px;">
-                  <div style="font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:0.08em;margin-bottom:6px;">AI COUNCIL</div>
-                  <div style="display:flex;flex-direction:column;gap:5px;">
-                    <div style="display:flex;gap:8px;align-items:flex-start;">
-                      <span style="font-family:var(--mono);font-size:9px;color:#a78bda;min-width:60px;">🏛 ARCH</span>
-                      <span id="councilArchitect" style="font-family:var(--mono);font-size:9px;color:var(--text3);line-height:1.4;"></span>
-                    </div>
-                    <div style="display:flex;gap:8px;align-items:flex-start;">
-                      <span style="font-family:var(--mono);font-size:9px;color:#f97316;min-width:60px;">🔍 AUD</span>
-                      <span id="councilAuditor" style="font-family:var(--mono);font-size:9px;color:var(--text3);line-height:1.4;"></span>
-                    </div>
-                    <div style="display:flex;gap:8px;align-items:flex-start;">
-                      <span style="font-family:var(--mono);font-size:9px;color:#4d9fff;min-width:60px;">⚖️ ARB</span>
-                      <span id="councilArbiter" style="font-family:var(--mono);font-size:9px;color:var(--text3);line-height:1.4;"></span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+
+        <!-- Agent Council: deliberation → verdict -->
+        <div class="council-section">
+          <div class="council-section-label">agent council</div>
+
+          <!-- Architect + Auditor: deliberation (slightly dimmed) -->
+          <div class="council-deliberation">
+            <div class="council-row">
+              <span class="council-badge badge-arch">Architect</span>
+              <span class="council-text" id="council-arch">—</span>
+            </div>
+            <div class="council-row">
+              <span class="council-badge badge-aud">Auditor</span>
+              <span class="council-text" id="council-aud">—</span>
             </div>
           </div>
-          <div class="sig-row" style="grid-template-columns:1fr 1fr;">
-            <div class="sig-c"><div class="sig-lbl">Confidence</div><div class="sig-val" id="sbConfRight">—</div></div>
-            <div class="sig-c"><div class="sig-lbl">Rebalance</div><div class="sig-val" id="sReb">—</div><div class="sig-sub" id="sRebs">awaiting</div></div>
-          </div>
-          <div class="sig-row" style="grid-template-columns:1fr 1fr 1fr;">
-            <div class="sig-c"><div class="sig-lbl">Funding Rate</div><div class="sig-val" id="sFR">—</div><div class="sig-sub" id="sFRs">loading</div></div>
-            <div class="sig-c"><div class="sig-lbl">OI Δ</div><div class="sig-val danger" id="sOI">—</div><div class="sig-sub" id="sOIs">3h window</div></div>
-            <div class="sig-c"><div class="sig-lbl">Signal</div><div class="sig-val" id="sSig">—</div><div class="sig-sub" id="sSigs">−3 to +3</div></div>
-          </div>
-          <div class="ov-card">
-            <div class="ov-hdr"><span class="ov-title">BTC Price · 24 Snapshots (24h)</span><span class="ov-sub" id="btcLatest">—</span></div>
-            <div class="ov-body" style="padding-top:8px;">
-              <svg id="btcSpark" width="100%" height="120" style="display:block;"></svg>
-              <div id="btcSparkPrices" style="display:flex;justify-content:space-between;margin-top:4px;font-family:var(--mono);font-size:9px;color:var(--text3);"></div>
-            </div>
+
+          <!-- Arbiter: final verdict (highlighted) -->
+          <div class="arbiter-row">
+            <div class="arbiter-verdict-label">▸ Arbiter verdict</div>
+            <div class="arbiter-verdict-text" id="council-arb">—</div>
           </div>
         </div>
       </div>
-    </div>
-  </div>
 
-  <!-- LIVE LOG -->
-  <div class="panel" id="panel-log">
-    <div class="log-wrap">
-      <div class="log-bar">
-        <div class="log-dots"><div class="ld" style="background:#ff5f57"></div><div class="ld" style="background:#febc2e"></div><div class="ld" style="background:#28c840"></div></div>
-        <span class="log-title">Agent Output — Live</span>
-        <div style="display:flex;gap:6px;margin-left:auto;">
-          <button class="log-clr" style="color:#60a5fa;border-color:#60a5fa;" onclick="forceAction('regime-check')">▶ Regime Check</button>
-          <button class="log-clr" style="color:#4ade80;border-color:#4ade80;" onclick="forceAction('risk-on')">▶ Risk-On</button>
-          <button class="log-clr" style="color:#f87171;border-color:#f87171;" onclick="forceAction('risk-off')">▶ Risk-Off</button>
-          <button class="log-clr" onclick="clrLog()">Clear</button>
+      <!-- Allocation -->
+      <div class="alloc-grid" id="alloc-grid">
+        <div class="alloc-col" id="alloc-risk_on" style="--col-accent:#00c97a;">
+          <div class="alloc-col-label">risk on</div>
+          <div class="alloc-row"><span class="alloc-name">cmETH</span><div class="alloc-bar-wrap"><div class="alloc-bar" style="width:70%;background:#00c97a"></div></div><span class="alloc-pct">70%</span></div>
+          <div class="alloc-row"><span class="alloc-name">USDC (Aave)</span><div class="alloc-bar-wrap"><div class="alloc-bar" style="width:30%;background:#00e5c8"></div></div><span class="alloc-pct">30%</span></div>
+          <div class="alloc-apy">blended<span class="alloc-apy-val" id="blended-risk_on">—</span></div>
+        </div>
+        <div class="alloc-col" id="alloc-neutral" style="--col-accent:#f0c94a;">
+          <div class="alloc-col-label">neutral</div>
+          <div class="alloc-row"><span class="alloc-name">mETH</span><div class="alloc-bar-wrap"><div class="alloc-bar" style="width:50%;background:#00c97a"></div></div><span class="alloc-pct">50%</span></div>
+          <div class="alloc-row"><span class="alloc-name">USDC (Aave)</span><div class="alloc-bar-wrap"><div class="alloc-bar" style="width:50%;background:#00e5c8"></div></div><span class="alloc-pct">50%</span></div>
+          <div class="alloc-apy">blended<span class="alloc-apy-val" id="blended-neutral">—</span></div>
+        </div>
+        <div class="alloc-col" id="alloc-risk_off" style="--col-accent:#f05a5a;">
+          <div class="alloc-col-label">risk off</div>
+          <div class="alloc-row"><span class="alloc-name">USDC (Aave)</span><div class="alloc-bar-wrap"><div class="alloc-bar" style="width:100%;background:#00e5c8"></div></div><span class="alloc-pct">100%</span></div>
+          <div class="alloc-apy">blended<span class="alloc-apy-val" id="blended-risk_off">—</span></div>
         </div>
       </div>
-      <div id="log"><span class="ll dim">[system] Arcana ready. Gateway connected. Waiting for actions...</span></div>
+
     </div>
-  </div>
 
-  <!-- TX HISTORY -->
-  <div class="panel" id="panel-history">
-    <div class="hist-wrap" id="txList"><div class="empty"><div class="empty-icon">◎</div><div class="empty-txt">Loading history...</div></div></div>
-  </div>
-
-</main>
-</div>
-
-<div class="modal-bg" id="modalBg">
-  <div class="modal">
-    <div class="modal-title" id="modalTitle">Confirm</div>
-    <div class="modal-desc" id="modalDesc"></div>
-    <div class="modal-row">
-      <button class="mb" onclick="closeModal()">Cancel</button>
-      <button class="mb ok-mb" id="modalOk" onclick="confirmAction()">Execute</button>
+    <!-- COL 3: Live Log -->
+    <div>
+      <div class="log-card">
+        <div class="log-card-title">
+          <span class="log-dot"></span>
+          live log
+        </div>
+        <div class="log-body" id="log-body"></div>
+      </div>
     </div>
-  </div>
+
+  </div><!-- /columns -->
 </div>
-<div class="toast" id="toast"><span id="toastTxt">—</span></div>
 
 <script>
-const API='';let wallet=null,pendingAction=null,countdown=3600,txHistory=[];
-
-async function connectWallet(){
-  if(wallet)return;
-  if(!window.ethereum){showToast('MetaMask not detected','danger');return;}
-  const label=document.getElementById('connectLabel');
-  try{
-    label.innerHTML='<span class="spin"></span>Connecting';
-    const accs=await window.ethereum.request({method:'eth_requestAccounts'});
-    wallet=accs[0];
-    const btn=document.getElementById('connectBtn');
-    btn.classList.add('connected');
-    label.textContent=wallet.slice(0,6)+'…'+wallet.slice(-4);
-    showToast('Connected: '+wallet.slice(0,10)+'…','ok');
-    addLog('Wallet connected: '+wallet,'ok');
-    await registerUserWallet(wallet);
-    connectSSE(); // EOA確定後に再接続
-  }catch(e){
-    label.textContent='Connect Wallet';
-    showToast(e.message,'danger');
-  }
+function regimeColor(r) {
+  if (r === 'risk_on') return '#00c97a';
+  if (r === 'neutral') return '#f0c94a';
+  return '#f05a5a';
 }
 
-async function registerUserWallet(eoa){
-  try{
-    const check=await fetch(API+'/api/user/'+eoa);
-    const data=await check.json();
-    if(data.exists){
-      showDepositAddress(data.walletAddress, eoa);
-      addLog('Agent wallet: '+data.walletAddress,'ok');
-      fetchUserCount();
-      fetchState();
-      return;
-    }
-    addLog('Sign once to create your agent wallet…','accent');
-    const message='Arcana: create agent wallet for '+eoa+' at '+new Date().toISOString().slice(0,10);
-    const signature=await window.ethereum.request({method:'personal_sign',params:[message,eoa]});
-    addLog('Creating your dedicated agent wallet…','');
-    const res=await fetch(API+'/api/user/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({eoa,signature,message})});
-    const result=await res.json();
-    if(result.error)throw new Error(result.error);
-    showDepositAddress(result.walletAddress, eoa);
-    addLog((result.created?'✅ Agent wallet created: ':'✅ Agent wallet: ')+result.walletAddress,'ok');
-    showToast(result.created?'Agent wallet created!':'Welcome back!','ok');
-    fetchUserCount();
-    fetchState();
-  }catch(e){addLog('Wallet setup failed: '+e.message,'danger');}
+function addLog(line) {
+  const el = document.getElementById('log-body');
+  const d = document.createElement('div');
+  d.className = 'log-line';
+  const ts = new Date().toTimeString().slice(0, 8);
+  d.textContent = ts + '  ' + String(line).replace(/\*\*/g, '').replace(/\*/g, '');
+  el.insertBefore(d, el.firstChild);
+  if (el.children.length > 100) el.removeChild(el.lastChild);
 }
 
-function showDepositAddress(addr, eoa){
-  const sec=document.getElementById('depositSection');
-  sec.innerHTML=`<div class="deposit-box">
-    <div class="deposit-lbl">Deposit Address · Arc Testnet</div>
-    <div class="deposit-addr" onclick="navigator.clipboard.writeText('${addr}');showToast('Copied!','ok')">${addr}</div>
-    <div class="deposit-hint">Send USDC here · Agent manages the rest</div>
-  </div>`;
-  const ws=document.getElementById('withdrawSection');
-  if(ws)ws.style.display='block';
-  window._connectedEoa=eoa||addr;
-}
-async function doWithdraw(){
-  const eoa=window._connectedEoa;
-  const amt=parseFloat(document.getElementById('ubTotal')?.textContent)||0;
-  if(!eoa){showToast('Connect wallet first','warn');return;}
-  const btn=document.getElementById('withdrawBtn');
-  const status=document.getElementById('withdrawStatus');
-  btn.disabled=true;btn.textContent='Sending...';
-  status.style.color='var(--text3)';status.textContent='Processing withdrawal...';
-  try{
-    const r=await fetch(API+'/api/withdraw',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({eoa,amount:amt})});
-    const d=await r.json();
-    if(d.ok){
-      status.style.color='var(--ok)';
-      const short=eoa.slice(0,6)+'…'+eoa.slice(-4);
-      let msg='✅ Withdrawn to '+short;
-      if(d.txHash) msg+='\n  Unified tx: '+d.txHash.slice(0,18)+'...';
-      if(d.circleTxId) msg+='\n  Circle tx: '+d.circleTxId.slice(0,18)+'...';
-      status.style.whiteSpace='pre';
-      status.textContent=msg;
-      showToast('Withdrawn to '+short,'ok');
-      setTimeout(()=>fetchBalances(eoa),5000);
-    }else{
-      status.style.color='var(--danger)';
-      status.textContent='❌ '+d.error;
-    }
-  }catch(e){
-    status.style.color='var(--danger)';
-    status.textContent='❌ '+e.message;
-  }finally{
-    btn.disabled=false;btn.textContent='Withdraw All →EOA';
-  }
-}
+function renderRegime(r) {
+  if (!r || !r.regime) return;
+  const color = regimeColor(r.regime);
+  document.getElementById('regime-card').style.setProperty('--accent', color);
+  const rv = document.getElementById('regime-val');
+  rv.textContent = r.regime.replace('_', ' ').toUpperCase();
+  rv.style.color = color;
 
-async function fetchUserCount(){
-  try{
-    const r=await fetch(API+'/api/users');
-    if(r.ok){const d=await r.json();document.getElementById('sbUsers').textContent=d.count||d.length||'—';}
-  }catch{}
-}
-
-function switchTab(name,btn){
-  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
-  document.getElementById('panel-'+name).classList.add('active');
-  btn.classList.add('active');
-  if(name==='history')loadHistory();
-}
-
-function addLog(txt,type=''){
-  const log=document.getElementById('log');
-  const ts=new Date().toUTCString().slice(17,25);
-  const s=document.createElement('span');
-  s.className='ll '+type;
-  s.textContent='['+ts+'] '+txt;
-  log.appendChild(s);
-  log.scrollTop=log.scrollHeight;
-}
-function clrLog(){document.getElementById('log').innerHTML='';}
-async function forceAction(type){
-  addLog(`[manual] triggering ${type}...`,'dim');
-  try{
-    const r=await fetch(API+'/api/'+type,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({eoa:wallet})});
-    if(!r.ok)addLog('[error] '+await r.text(),'err');
-  }catch(e){addLog('[error] '+e.message,'err');}
-}
-
-let _sse=null;
-function connectSSE(){
-  if(_sse){try{_sse.close();}catch{} _sse=null;}
-  const eoa=wallet||'';
-  const sse=new EventSource(API+'/events'+(eoa?'?eoa='+eoa:''));
-  _sse=sse;
-  sse.onopen=()=>setOnline(true);
-  sse.onerror=()=>{setOnline(false);try{sse.close();}catch{} setTimeout(connectSSE,4000);};
-  sse.onmessage=e=>{
-    try{
-      const m=JSON.parse(e.data);
-      if(m.type==='log')addLog(m.line,logClass(m.line));
-      else if(m.type==='regime')updateRegime(m.data);
-      else if(m.type==='balances')updateBalances(m.data);
-      else if(m.type==='done'){addLog('Done.','ok');showToast('Completed','ok');}
-      else if(m.type==='error'){addLog(m.message,'danger');showToast(m.message,'danger');}
-    }catch{}
+  // ④ Strategy objective
+  const OBJECTIVES = {
+    risk_on:  'Objective: maximize ETH beta exposure',
+    neutral:  'Objective: balanced yield, preserve optionality',
+    risk_off: 'Objective: preserve capital, minimize drawdown',
   };
-}
+  document.getElementById('regime-objective').textContent = OBJECTIVES[r.regime] || '';
 
-function logClass(l){
-  if(/✅|minted|success/i.test(l))return'ok';
-  if(/❌|error|fail/i.test(l))return'danger';
-  if(/⚠|warn|skip/i.test(l))return'warn';
-  if(/\[arc\]|\[agent\]|gateway|attestation/i.test(l))return'accent';
-  return'';
-}
+  // ② Confidence — low conf styling
+  const conf = r.confidence || 0;
+  const fr   = r.funding_rate;
+  const ss   = r.signal_score;
+  const card = document.getElementById('regime-card');
+  card.classList.toggle('low-conf', conf < 0.6);
 
-function setOnline(ok){document.getElementById('sysDot').className='sys-dot'+(ok?'':' off');}
-
-function updateRegime(d){
-  window._lastRegime = d;
-  const cre=document.getElementById('sbConfRight');if(cre)cre.textContent=d.confidence?Math.round(d.confidence*100)+'%':'—';
-  if(!d)return;
-  const r=d.regime||'neutral';
-  const navR=document.getElementById('navRegime');
-  navR.className='regime-pill '+r;
-  document.getElementById('navTxt').textContent=r.toUpperCase().replace('_','-');
-  document.getElementById('rcBarV').className='rc-bar-v '+r;
-  document.getElementById('rcPhase').textContent=d.phase||'—';
-  document.getElementById('rcPhase').style.color=r==='risk_off'?'var(--danger)':r==='risk_on'?'var(--ok)':'var(--text)';
-  document.getElementById('rcReason').textContent=d.reasoning||'—';
-  document.getElementById('rcReason').style.color='var(--text2)';
-  if(d.council){
-    document.getElementById('councilPanel').style.display='block';
-    document.getElementById('councilArchitect').textContent=d.council.architect||'—';
-    document.getElementById('councilAuditor').textContent=d.council.auditor||'—';
-    document.getElementById('councilArbiter').textContent=d.council.arbiter||'—';
+  document.getElementById('btc-price').textContent = r.btc_price ? '$' + Number(r.btc_price).toLocaleString() : '—';
+  document.getElementById('phase').textContent = r.phase || '—';
+  document.getElementById('conf-val').textContent = (conf * 100).toFixed(0) + '%';
+  const cb = document.getElementById('conf-bar');
+  cb.style.width = (conf * 100) + '%';
+  cb.style.background = conf < 0.6 ? 'var(--m-yellow)' : color;
+  document.getElementById('funding').textContent = fr != null ? (fr * 100).toFixed(4) + '%' : '—';
+  document.getElementById('signal-score').textContent = ss != null ? (ss >= 0 ? '+' : '') + ss : '—';
+  if (r.updated_at) {
+    document.getElementById('updated-at').textContent = new Date(r.updated_at).toTimeString().slice(0, 8);
   }
-  const pct=Math.round((d.confidence||0)*100);
-  document.getElementById('confFill').style.width=pct+'%';
-  document.getElementById('confNum').textContent=pct+'%';
-  const sbPh=document.getElementById('sbPhase');if(sbPh)sbPh.textContent=d.phase||'—';
-  if(d.btc_price){
-    const p='$'+Number(d.btc_price).toLocaleString();
-    const sbBtcEl=document.getElementById('sbBtc');if(sbBtcEl)sbBtcEl.textContent=p;
-    document.getElementById('btcLatest').textContent=p;
+  // Arbiter verdict box: border color tracks regime
+  const arbiterBox = document.querySelector('.arbiter-row');
+  if (arbiterBox) {
+    arbiterBox.style.background = color === '#00c97a' ? 'rgba(0,201,122,0.06)' :
+                                   color === '#f0c94a' ? 'rgba(240,201,74,0.06)' :
+                                   'rgba(240,90,90,0.06)';
+    arbiterBox.style.borderColor = color === '#00c97a' ? 'rgba(0,201,122,0.25)' :
+                                    color === '#f0c94a' ? 'rgba(240,201,74,0.25)' :
+                                    'rgba(240,90,90,0.25)';
+    const vLabel = document.querySelector('.arbiter-verdict-label');
+    if (vLabel) vLabel.style.color = color;
   }
-  const sig=d.signal_score;
-  if(sig!==undefined){
-    const cl=sig>0?'ok':sig<0?'danger':'';
-    const sbSg=document.getElementById('sbSig');if(sbSg){sbSg.textContent=(sig>0?'+':'')+sig;
-    if(sbSg)sbSg.className='sb-val '+cl;}
-    const sSig=document.getElementById('sSig');
-    sSig.textContent=(sig>0?'+':'')+sig;
-    sSig.className='sig-val '+(sig>0?'ok':sig<0?'danger':'warn');
-    document.getElementById('sSigs').textContent=sig>0?'bullish':sig<0?'bearish':'neutral';
-    document.getElementById('sSigs').className='sig-sub '+(sig>0?'ok':sig<0?'danger':'');
-  }
-  const fr=d.funding_rate;
-  if(fr!==undefined){
-    document.getElementById('sFR').textContent=(fr*100).toFixed(4)+'%';
-    document.getElementById('sFR').className='sig-val '+(fr>0?'ok':fr<0?'danger':'');
-    document.getElementById('sFRs').textContent=fr>0?'long bias':fr<0?'short bias':'neutral';
-    document.getElementById('sFRs').className='sig-sub '+(fr>0?'ok':fr<0?'danger':'');
-  }
-  const reb=d.rebalance;
-  if(reb!==undefined){
-    document.getElementById('sReb').textContent=reb?'YES':'NO';
-    document.getElementById('sReb').className='sig-val '+(reb?'ok':'');
-    document.getElementById('sRebs').textContent=reb?'action required':'hold';
-    document.getElementById('sRebs').className='sig-sub '+(reb?'ok':'');
-  }
-  const oi=d.oi_change;
-  if(oi!==undefined){
-    const oiEl=document.getElementById('sOI');
-    oiEl.textContent=(oi>0?'+':'')+oi.toFixed(1)+'%';
-    oiEl.className='sig-val '+(oi>0?'ok':oi<0?'danger':'');
-    document.getElementById('sOIs').textContent='3h window';
-    document.getElementById('sOIs').className='sig-sub '+(oi<0?'danger':'');
-  }
-}
-
-function updateBalances(d){
-  const chainColors={'Base_Sepolia':'#627eea','Arc_Testnet':'var(--accent)','Ethereum_Sepolia':'#8c8c8c','Arbitrum_Sepolia':'#28a0f0','Optimism_Sepolia':'#ff0420','Polygon_Amoy_Testnet':'#8247e5','Avalanche_Fuji':'#e84142','Unichain_Sepolia':'#f50db4','Sonic_Testnet':'#00d4aa','World_Chain_Sepolia':'#00c2ff','Sei_Testnet':'#9d4edd','HyperEVM_Testnet':'#ff6b35'};
-  const chains=d.chains||[];
-  const list=document.getElementById('ubChainList');
-  if(list&&chains.length){
-    window._allChains = chains;
-    window._chainColors = chainColors;
-    renderChainList(false);
-  }
-  const circleEl=document.getElementById('ubCircle');if(circleEl)circleEl.textContent=(d.circleWallet||0).toFixed(4);
-  document.getElementById('ubTotal').textContent=(d.unifiedTotal||0).toFixed(4);
-}
-
-function renderChainList(showAll){
-  const chains = window._allChains||[];
-  const chainColors = window._chainColors||{};
-  const list = document.getElementById('ubChainList');
-  if(!list) return;
-  const active = chains.filter(c=>c.balance>0);
-  const display = showAll ? chains : chains;
-  const html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:4px;">'+display.map(ch=>{
-    const isArc=ch.chain==='Arc_Testnet';
-    const color=chainColors[ch.chain]||'#666';
-    const label=ch.chain.replace(/_/g,' ');
-    const valColor=isArc?'var(--ok)':ch.balance>0?'var(--text1)':'var(--text3)';
-    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:5px;">
-      <div style="display:flex;align-items:center;gap:5px;min-width:0;">
-        <div style="width:6px;height:6px;border-radius:50%;background:${color};flex-shrink:0;"></div>
-        <span style="font-family:var(--mono);font-size:9px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${label}</span>
-      </div>
-      <span style="font-family:var(--mono);font-size:10px;font-weight:600;color:${valColor};margin-left:4px;flex-shrink:0;">${ch.balance.toFixed(2)}</span>
-    </div>`;
-  }).join('')+'</div>';
-  const toggleBtn = chains.length > display.length || showAll
-    ? `<button onclick="renderChainList(${!showAll})" style="font-family:var(--mono);font-size:9px;color:var(--text3);background:none;border:none;cursor:pointer;padding:2px 0;">${showAll?'▲ Show less':'▼ Show all '+chains.length+' chains'}</button>`
-    : '';
-  list.innerHTML = html + toggleBtn;
-}
-
-function renderSpark(data){
-  const svg=document.getElementById('btcSpark');
-  svg.innerHTML='';
-  const pricesEl=document.getElementById('btcSparkPrices');
-  if(pricesEl)pricesEl.innerHTML='';
-  if(!data||!data.length)return;
-  const vals=data.map(d=>d.btc_price||d.mark_price||0).filter(Boolean);
-  if(!vals.length)return;
-  const W=svg.parentElement?.getBoundingClientRect().width||svg.getBoundingClientRect().width||600,H=120,PAD=10;
-  const rawMin=Math.min(...vals),rawMax=Math.max(...vals),rawRange=rawMax-rawMin||1;
-  const xs=vals.map((_,i)=>PAD+(i/(vals.length-1||1))*(W-PAD*2));
-  const ys=vals.map(v=>PAD+(1-(v-rawMin)/rawRange)*(H-PAD*2));
-  const ns='http://www.w3.org/2000/svg';
-  const defs=document.createElementNS(ns,'defs');
-  const grad=document.createElementNS(ns,'linearGradient');
-  grad.setAttribute('id','sparkGrad');grad.setAttribute('x1','0');grad.setAttribute('y1','0');grad.setAttribute('x2','0');grad.setAttribute('y2','1');
-  const s1=document.createElementNS(ns,'stop');s1.setAttribute('offset','0%');s1.setAttribute('stop-color','var(--accent)');s1.setAttribute('stop-opacity','0.3');
-  const s2=document.createElementNS(ns,'stop');s2.setAttribute('offset','100%');s2.setAttribute('stop-color','var(--accent)');s2.setAttribute('stop-opacity','0');
-  grad.appendChild(s1);grad.appendChild(s2);defs.appendChild(grad);svg.appendChild(defs);
-  const area=document.createElementNS(ns,'polyline');
-  area.setAttribute('points',xs.map((x,i)=>x+','+ys[i]).join(' ')+' '+xs[xs.length-1]+','+H+' '+xs[0]+','+H);
-  area.setAttribute('fill','url(#sparkGrad)');area.setAttribute('stroke','none');
-  svg.appendChild(area);
-  const line=document.createElementNS(ns,'polyline');
-  line.setAttribute('points',xs.map((x,i)=>x+','+ys[i]).join(' '));
-  line.setAttribute('fill','none');line.setAttribute('stroke','var(--accent)');line.setAttribute('stroke-width','1.5');line.setAttribute('stroke-linejoin','round');
-  svg.appendChild(line);
-  vals.forEach((v,i)=>{
-    const c=document.createElementNS(ns,'circle');
-    c.setAttribute('cx',xs[i]);c.setAttribute('cy',ys[i]);c.setAttribute('r','2.5');
-    c.setAttribute('fill','var(--accent)');c.setAttribute('opacity','0.8');
-    const t=document.createElementNS(ns,'title');t.textContent='$'+v.toLocaleString();
-    c.appendChild(t);svg.appendChild(c);
+  applyPortfolioHighlight(r.regime);
+  ['risk_on','neutral','risk_off'].forEach(regime => {
+    const el = document.getElementById('alloc-' + regime);
+    if (el) el.classList.toggle('active', regime === r.regime);
   });
-  if(pricesEl){const n=8;const shown=Array.from({length:n},(_,i)=>vals[Math.round(i*(vals.length-1)/(n-1))]);pricesEl.innerHTML=shown.map(v=>'<span>$'+Math.round(v).toLocaleString()+'</span>').join('');}
-}
-
-async function fetchState(){
-  try{const r=await fetch(API+'/api/regime');if(r.ok)updateRegime(await r.json());}catch{}
-  if(wallet){try{const r=await fetch(API+'/api/balances?address='+wallet);if(r.ok)updateBalances(await r.json());}catch{}}
-  try{const r=await fetch(API+'/api/snapshots');if(r.ok){const sd=await r.json();requestAnimationFrame(()=>renderSpark(sd));}}catch{}
-  try{const r=await fetch(API+'/api/tx-history');if(r.ok){txHistory=await r.json();}}catch{}
-  fetchUserCount();
-  if(wallet){try{const r=await fetch(API+'/api/positions?eoa='+wallet);if(r.ok)renderVaultPosition(await r.json());}catch{}}
-}
-
-function renderVaultPosition(positions){
-  const el = document.getElementById('vaultPosition');
-  const totalEl = document.getElementById('vaultTotal');
-  if(!el) return;
-  if(!positions || positions.length === 0){
-    // Show state based on current regime
-    const regime = window._lastRegime;
-    let stateHtml;
-    if(!regime){
-      stateHtml = '<span style="color:var(--text3);">NO POSITION</span>';
-    } else if(regime.regime === 'risk_off'){
-      stateHtml = '<span style="color:#4d9fff;letter-spacing:1px;">⬡ PARKED ON ARC</span><div style="color:var(--text3);font-size:9px;margin-top:3px;">USDC · Arc Testnet</div>';
-    } else if(regime.regime === 'risk_on'){
-      stateHtml = '<span style="color:#facc15;letter-spacing:1px;">↑ DEPLOYING TO VAULT</span><div style="color:var(--text3);font-size:9px;margin-top:3px;">scanning LI.FI Earn...</div>';
-    } else {
-      stateHtml = '<span style="color:var(--text3);">◎ IDLE · USDC</span>';
-    }
-    el.innerHTML = '<div style="font-family:var(--mono);font-size:11px;text-align:center;padding:10px;">'+stateHtml+'</div>';
-    if(totalEl) totalEl.textContent = '$0.00';
-    updatePortfolioTotal();
-    return;
+  if (r.council) {
+    document.getElementById('council-arch').textContent = r.council.architect || '—';
+    document.getElementById('council-aud').textContent  = r.council.auditor   || '—';
+    document.getElementById('council-arb').textContent  = r.council.arbiter   || '—';
   }
-  const raw = positions[0];
-  const p = {
-    vaultName: raw.vaultName || raw.vault_name,
-    protocol:  raw.protocol,
-    chainId:   raw.chainId || raw.chain_id,
-    valueUsd:  raw.valueUsd || raw.value_usd,
-    apy:       raw.apy,
-    vaultAddress: raw.vaultAddress || raw.vault_address,
+  if (_yieldsData) recalcBlended(_yieldsData);
+}
+
+const HOLDING_TOKENS = [
+  { sym: 'CMETH', color: '#00c97a', apyKey: 'cmeth_apy', regimes: ['risk_on'], badges: ['E','K','S','V'] },
+  { sym: 'METH',  color: '#00c97a', apyKey: 'meth_apy',  regimes: ['neutral'] },
+  { sym: 'USDC',  color: '#00e5c8', apyKey: null, regimes: [], fixedApy: 0 },
+  { sym: 'MNT',   color: '#4a7a60', apyKey: null,         regimes: [], fixedApy: 0 },
+];
+const AAVE_TOKENS_UI = [
+  { sym: 'aUSDC',  color: '#00e5c8', apyKey: 'aave_usdc',  regimes: ['risk_on','neutral','risk_off'] },
+  { sym: 'aUSDT0', color: '#00e5c8', apyKey: 'aave_usdt0', regimes: [] },
+  { sym: 'aGHO',   color: '#a78bfa', apyKey: 'aave_gho',   regimes: [] },
+  { sym: 'aUSDE',  color: '#6b9980', apyKey: 'aave_usde',  regimes: [] },
+];
+
+let _currentRegime = null;
+let _yieldsData = null;
+
+function applyPortfolioHighlight(regime) {
+  _currentRegime = regime;
+  [...HOLDING_TOKENS, ...AAVE_TOKENS_UI].forEach(t => {
+    const id = 'pr-' + t.sym.toLowerCase().replace(/[^a-z0-9]/g,'');
+    const el = document.getElementById(id);
+    if (!el) return;
+    const isActive = t.regimes && t.regimes.includes(regime);
+    el.classList.toggle('active', isActive);
+    if (isActive) el.style.setProperty('--row-color', t.color);
+  });
+}
+
+function recalcBlended(d) {
+  if (d.cmeth_apy && d.aave_usdc)
+    document.getElementById('blended-risk_on').textContent  = (d.cmeth_apy*0.7 + d.aave_usdc*0.3).toFixed(2) + '%';
+  if (d.meth_apy && d.aave_usdc)
+    document.getElementById('blended-neutral').textContent  = (d.meth_apy*0.5 + d.aave_usdc*0.5).toFixed(2) + '%';
+  if (d.aave_usdc)
+    document.getElementById('blended-risk_off').textContent = d.aave_usdc.toFixed(2) + '%';
+  // portfolio APY column — update after yields load
+  if (_currentRegime) applyPortfolioHighlight(_currentRegime);
+}
+
+async function loadPortfolio() {
+  try {
+    const res = await fetch('/api/balances');
+    const d = await res.json();
+    let total = 0;
+    const holdMap = {};
+    (d.holdings || []).forEach(h => { holdMap[h.symbol] = h; total += (h.usd || 0); });
+    const hContainer = document.getElementById('portfolio-rows');
+    hContainer.innerHTML = '';
+    HOLDING_TOKENS.forEach(t => {
+      const h = holdMap[t.sym];
+      const amt = h ? h.amount : 0;
+      const usd = h ? (h.usd || 0) : 0;
+      const apy = t.fixedApy != null ? t.fixedApy : (_yieldsData && t.apyKey ? _yieldsData[t.apyKey] : null);
+      const badgeHtml = t.badges ? `<span class="points-badges">${t.badges.map(b => {
+        const tips = {
+          E: 'EigenLayer: Ethereum restaking protocol. eigenlayer.xyz',
+          K: 'Karak: Universal restaking layer. karak.network',
+          S: 'Symbiotic: Generalized shared security. symbiotic.fi',
+          V: 'Veda: DeFi Earn Network powering cmETH. veda.tech',
+        };
+        return `<span class="points-badge" data-tip="${tips[b]}">${b}</span>`;
+      }).join('')}</span>` : '';
+      const row = document.createElement('div');
+      row.className = 'portfolio-row';
+      row.id = 'pr-' + t.sym.toLowerCase().replace(/[^a-z0-9]/g,'');
+      row.innerHTML = `
+        <span class="portfolio-sym">${t.sym}</span>
+        <span class="portfolio-amt">${Number(amt).toFixed(4)}</span>
+        <span class="portfolio-usd">${usd > 0 ? '$' + usd.toFixed(2) : '—'}</span>
+        <span class="portfolio-apy">${apy != null ? apy.toFixed(2) + '%' : '—'}</span>
+        ${badgeHtml}
+      `.trim();
+      hContainer.appendChild(row);
+    });
+    const aaveMap = {};
+    (d.aaveHoldings || []).forEach(h => { aaveMap[h.symbol] = h; total += (h.usd || 0); });
+    const aContainer = document.getElementById('aave-rows');
+    aContainer.innerHTML = '';
+    AAVE_TOKENS_UI.forEach(t => {
+      const h = aaveMap[t.sym];
+      const amt = h ? h.amount : 0;
+      const usd = h ? (h.usd || 0) : 0;
+      const apy = _yieldsData && t.apyKey ? _yieldsData[t.apyKey] : null;
+      const row = document.createElement('div');
+      row.className = 'portfolio-row';
+      row.id = 'pr-' + t.sym.toLowerCase().replace(/[^a-z0-9]/g,'');
+      row.innerHTML = `
+        <span class="portfolio-sym">${t.sym}</span>
+        <span class="portfolio-amt">${Number(amt).toFixed(4)}</span>
+        <span class="portfolio-usd">${usd > 0 ? '$' + usd.toFixed(2) : '—'}</span>
+        <span class="portfolio-apy">${apy != null ? apy.toFixed(2) + '%' : '—'}</span>
+      `;
+      aContainer.appendChild(row);
+    });
+    document.getElementById('portfolio-total').textContent = total > 0 ? '$' + total.toFixed(2) : '$0.00';
+    if (_currentRegime) applyPortfolioHighlight(_currentRegime);
+  } catch(e) { console.error(e); }
+}
+
+async function loadYields() {
+  try {
+    const res = await fetch('/api/yields');
+    _yieldsData = await res.json();
+    recalcBlended(_yieldsData);
+  } catch(e) {}
+}
+
+async function loadRegime() {
+  try {
+    const res = await fetch('/api/regime');
+    renderRegime(await res.json());
+  } catch(e) { addLog('regime fetch error: ' + e.message); }
+}
+
+async function post(path, body) {
+  addLog('[manual] ' + path);
+  await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+}
+
+function forceRegime(regime) { post('/api/force-regime', { regime }); }
+
+function connectSSE() {
+  const es = new EventSource('/events');
+  es.onopen = () => {
+    document.getElementById('status-dot').style.background = '#00c97a';
+    document.getElementById('status-text').textContent = 'live';
   };
-  const chainNames = {8453:'Base',84532:'Base Sepolia',1:'Ethereum',42161:'Arbitrum',10:'Optimism'};
-  const chainName = chainNames[p.chainId] || 'Chain '+p.chainId;
-  const explorerBase = p.chainId === 84532 ? 'https://sepolia.basescan.org/address/' : 'https://basescan.org/address/';
-  const val = parseFloat(p.valueUsd||0);
-  if(totalEl) totalEl.textContent = '$'+val.toFixed(2);
-  el.innerHTML = `<div style="background:rgba(250,204,21,0.04);border:1px solid rgba(250,204,21,0.2);border-radius:6px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text1);">${p.vaultName||'USDC'}</div><div style="display:flex;gap:4px;margin-top:4px;"><span style="font-family:var(--mono);font-size:9px;padding:1px 6px;border-radius:3px;background:rgba(123,94,167,0.2);border:1px solid rgba(123,94,167,0.4);color:#a78bda;">${p.protocol||'—'}</span><span style="font-family:var(--mono);font-size:9px;padding:1px 6px;border-radius:3px;background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--text3);">${chainName}</span></div></div><div style="text-align:right;"><div style="font-family:var(--mono);font-size:14px;font-weight:700;color:#facc15;">${p.apy ? p.apy.toFixed(2)+'%' : '—'} APY</div>${p.vaultAddress ? `<a href="${explorerBase}${p.vaultAddress}" target="_blank" style="font-family:var(--mono);font-size:9px;color:var(--text3);text-decoration:none;opacity:0.6;">${p.vaultAddress.slice(0,10)}...</a>` : ''}</div></div>`;
-  updatePortfolioTotal();
+  es.onmessage = e => {
+    try {
+      const d = JSON.parse(e.data);
+      if (d.type === 'log')    addLog(d.line);
+      if (d.type === 'regime') renderRegime(d.data);
+      if (d.type === 'done')   { loadRegime(); loadPortfolio(); }
+    } catch {}
+  };
+  es.onerror = () => {
+    document.getElementById('status-dot').style.background = '#f05a5a';
+    document.getElementById('status-dot').style.animation = 'none';
+    document.getElementById('status-text').textContent = 'reconnecting...';
+    setTimeout(connectSSE, 3000);
+  };
 }
 
-function updatePortfolioTotal(){
-  const circle = parseFloat(document.getElementById('ubCircle')?.textContent)||0;
-  const unified = parseFloat(document.getElementById('ubTotal')?.textContent)||0;
-  const vault = parseFloat((document.getElementById('vaultTotal')?.textContent||'').replace('$',''))||0;
-  const el = document.getElementById('portfolioTotal');
-  if(el) el.textContent = '$'+(circle+unified+vault).toFixed(2);
+// Tooltip — event delegation (works with dynamically created badges)
+const tooltip = document.createElement('div');
+tooltip.style.cssText = 'display:none;position:fixed;width:220px;background:#111;border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:7px 9px;font-size:10px;color:#fff;line-height:1.5;z-index:9999;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,0.6);white-space:normal;';
+document.body.appendChild(tooltip);
+
+document.addEventListener('mousemove', e => {
+  tooltip.style.left = (e.clientX + 12) + 'px';
+  tooltip.style.top  = (e.clientY - 60) + 'px';
+  const badge = e.target.closest('[data-tip]');
+  if (badge) {
+    tooltip.textContent = badge.dataset.tip;
+    tooltip.style.display = 'block';
+  } else {
+    tooltip.style.display = 'none';
+  }
+});
+
+// Sync log height to col2 height
+function syncLogHeight() {
+  const col2 = document.querySelector('.columns > div:nth-child(2)');
+  const logBody = document.getElementById('log-body');
+  if (!col2 || !logBody) return;
+  const col2H = col2.getBoundingClientRect().height;
+  const logCard = logBody.closest('.log-card');
+  const titleH = logCard.querySelector('.log-card-title').getBoundingClientRect().height;
+  const pad = 24;
+  logBody.style.maxHeight = Math.max(120, col2H - titleH - pad) + 'px';
 }
+window.addEventListener('resize', syncLogHeight);
+setTimeout(syncLogHeight, 400);
 
-
-async function loadHistory(){
-  try{const r=await fetch(API+'/api/tx-history');if(r.ok){txHistory=await r.json();renderHistory();}}catch{renderHistory();}
-}
-
-function renderHistory(){
-  const list=document.getElementById('txList');
-  if(!txHistory.length){list.innerHTML='<div class="empty"><div class="empty-icon">◎</div><div class="empty-txt">No transactions yet</div></div>';return;}
-  const tm={'arcana-arc-bridge':{icon:'⬡',cls:'bridge',label:'Base Sepolia → Arc Testnet'},'arcana-arc-retrieve':{icon:'⬢',cls:'bridge',label:'Arc Testnet → Base Sepolia'},'arcana-risk-on':{icon:'↑',cls:'on',label:'Risk-On Rebalance'},'arcana-risk-off':{icon:'⬇',cls:'off',label:'Risk-Off'}};
-  list.innerHTML=txHistory.slice().map(tx=>{
-    const t=tm[tx.type]||{icon:'◎',cls:'',label:tx.type};
-    const hash=tx.tx?tx.tx.slice(0,10)+'…'+tx.tx.slice(-6):null;
-    const explorerUrl=tx.type==='arcana-arc-retrieve'?'https://sepolia.basescan.org/tx/'+tx.tx:'https://testnet.arcscan.app/tx/'+tx.tx;
-    return`<div class="tx-card"><div class="tx-ico ${t.cls}">${t.icon}</div><div class="tx-body"><div class="tx-type">${t.label}</div><div class="tx-meta">${tx.regime||'—'} · ${tx.amount?tx.amount+' USDC':''}</div></div><div class="tx-right"><div class="tx-amt">${tx.amount?tx.amount+' USDC':'—'}</div><div class="tx-time">${(tx.time||'').slice(0,19).replace('T',' ')} UTC</div>${hash?'<div class="tx-hash" onclick="window.open(\'' + explorerUrl + '\',\'_blank\')">' + hash + '</div>':''}</div></div>`;
-  }).join('');
-}
-
-let toastT;
-function showToast(msg,type='ok'){
-  const t=document.getElementById('toast');
-  document.getElementById('toastTxt').textContent=msg;
-  t.className='toast '+type;
-  clearTimeout(toastT);
-  setTimeout(()=>t.classList.add('show'),10);
-  toastT=setTimeout(()=>t.classList.remove('show'),3200);
-}
-function closeModal(){document.getElementById('modalBg').classList.remove('open');pendingAction=null;}
-async function confirmAction(){closeModal();if(!pendingAction)return;}
-
-setInterval(()=>{
-  countdown=Math.max(0,countdown-1);
-  const h=String(Math.floor(countdown/3600)).padStart(2,'0');
-  const m=String(Math.floor((countdown%3600)/60)).padStart(2,'0');
-  const cdEl=document.getElementById('countdown');if(cdEl)cdEl.textContent=h+':'+m;
-  if(countdown===0){countdown=3600;fetchState();}
-},1000);
-
-connectSSE();fetchState();setInterval(fetchState,120000);
+loadYields().then(() => { loadRegime(); loadPortfolio(); });
+connectSSE();
 </script>
 </body>
 </html>

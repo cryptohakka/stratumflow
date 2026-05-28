@@ -1,0 +1,12 @@
+{
+  "regime": "risk_off",
+  "targets": [
+    {
+      "token": "USDC",
+      "pct": 1,
+      "inAave": true,
+      "apy": 6.718583714523895
+    }
+  ],
+  "updatedAt": "2026-05-28T01:33:09.069Z"
+}

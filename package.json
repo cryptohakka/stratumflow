@@ -1,41 +1,22 @@
 {
-  "name": "arcana",
+  "name": "stratumflow",
   "version": "1.0.0",
-  "description": "Risk-adjusted DeFi yield optimizer with natural language interface",
+  "description": "AI-driven RWA portfolio rebalancer on Mantle — cmETH/mETH/USDY + Aave stable yield optimization",
   "main": "agent.js",
   "scripts": {
-    "scan": "node agent.js scan",
-    "suggest": "node agent.js suggest",
-    "allocate": "node agent.js allocate",
-    "ask": "node ask.js",
-    "withdraw": "node withdraw.js",
-    "consolidate": "node consolidate.js",
-    "rebalance": "node rebalance.js",
-    "monitor": "node monitor.js"
+    "start": "node ui-server.js",
+    "agent": "node agent.js",
+    "regime": "node regime.js"
   },
-  "keywords": [
-    "defi",
-    "yield",
-    "lifi",
-    "usdc",
-    "vault"
-  ],
-  "author": "",
+  "keywords": ["defi", "rwa", "mantle", "meth", "usdy", "aave", "ai", "agent"],
+  "author": "cryptohakka",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@circle-fin/adapter-circle-wallets": "^1.3.1",
-    "@circle-fin/adapter-viem-v2": "^1.11.1",
-    "@circle-fin/app-kit": "^1.6.1",
-    "@circle-fin/developer-controlled-wallets": "^10.3.1",
-    "@x402/core": "^2.10.0",
-    "@x402/evm": "^2.10.0",
-    "@x402/express": "^2.10.0",
     "axios": "^1.15.0",
     "better-sqlite3": "^12.10.0",
     "dotenv": "^16.6.1",
     "ethers": "^6.16.0",
-    "express": "^5.2.1",
-    "viem": "^2.48.11"
+    "express": "^5.2.1"
   }
 }

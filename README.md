@@ -1,122 +1,75 @@
-# Arcana — Adaptive Portfolio Manager
+# StratumFlow
 
-**Arcana** is a DeFi portfolio manager built on Circle's Arc Testnet. It continuously monitors BTC market conditions using a 3-agent AI council, then recommends rebalancing between Arc Testnet (safe parking) and Base Sepolia yield vaults — with humans approving each execution. Regime detection runs every hour.
+**AI-driven RWA portfolio rebalancer on Mantle** — a Triple-A agent council reads BTC market regime in real time and automatically rebalances between cmETH, mETH, and Aave stable yield.
 
-Built for [Agora RFB04](https://www.agora.finance/) — Risk-Based Portfolio Management on Arc.
-
----
-
-## How It Works
-
-```
-BTC Market Data → 3-Agent Regime Detection → Risk Decision → Arc ↔ Base Rebalance → LI.FI Vault
-```
-
-### 1. Regime Detection (every 60 min)
-
-Three AI agents analyze BTC market signals in sequence:
-
-| Agent | Role |
-|-------|------|
-| **Architect** | Builds the bull/bear case from funding rate, OI delta, price trend, and signal score |
-| **Auditor** | Critiques the Architect's analysis, challenging unsupported assumptions |
-| **Arbiter** | Weighs both arguments and outputs a structured JSON regime decision |
-
-Output: `regime` (risk_on / risk_off), `confidence` (0–1), `phase`, `rebalance` flag.
-
-The `rebalance` flag acts as an **Economic Guardrail** — execution only triggers when the Arbiter determines the regime shift is significant enough to justify bridge fees and gas costs, preventing churning in range-bound markets.
-
-### 2. Risk-Off — Park on Arc Testnet
-
-When the regime flips to `risk_off`:
-
-1. Collect USDC from the agent wallet (Base Sepolia)
-2. Deposit to Circle Unified Balance
-3. Spend (bridge) → Arc Testnet via Arc App Kit
-4. Funds sit on Arc Testnet, protected from market volatility
-
-### 3. Risk-On — Deploy to Yield
-
-When the regime flips to `risk_on`:
-
-1. Retrieve USDC from Arc Testnet → Base Sepolia via Unified Balance spend
-2. Query LI.FI Earn API for the highest-APY USDC vault on Base
-3. Notify selected vault (dry-run on testnet; real deposit on mainnet)
-
-### Multi-User Support
-
-Each user registers with their EOA wallet. Arcana derives a dedicated **Developer-Controlled Wallet (DCW)** per user via Circle's API, then runs the full rebalance loop across all users in parallel on each regime cycle.
+🎥 **Demo:** _[coming soon]_  
+🌐 **Live:** https://stratumflow.a2aflow.space
 
 ---
 
-## Onchain Audit Trail
+## Overview
 
-Every autonomous rebalance decision is permanently recorded on Arc Testnet via the **PositionRecorder** contract.
+StratumFlow continuously monitors BTC market conditions and dynamically allocates a Mantle-native portfolio across three regime states:
 
-**Contract:** `0xae2de994382ebB9fA0569Ea18029437d996bf1D3`  
-**Explorer:** https://testnet.arcscan.app/address/0xae2de994382ebB9fA0569Ea18029437d996bf1D3
+| Regime | Allocation | Strategy |
+|--------|-----------|----------|
+| **Risk On** | cmETH 70% / USDC(Aave) 30% | Maximize ETH beta exposure |
+| **Neutral** | mETH 50% / USDC(Aave) 50% | Balanced yield, preserve optionality |
+| **Risk Off** | USDC(Aave) 100% | Preserve capital, minimize drawdown |
 
-| Event | Trigger | Data |
-|-------|---------|------|
-| `PositionOpened` | Risk-On rebalance | EOA, amount (USDC), vault name, regime phase |
-| `PositionClosed` | Risk-Off rebalance | EOA, reason, timestamp |
-
-Each event is emitted by the agent wallet (`onlyAgent` modifier) immediately after execution, creating a tamper-proof history independent of the local `tx_history.json`. Any external party can verify the agent's decision history on-chain.
+Aave stable allocation always routes to the **highest-yield stable** (USDC/USDT0/GHO/USDe) dynamically selected by blended APY including Merkl incentives.
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                    ui-server.js                     │
-│   Express API + SSE broadcast + manual triggers     │
-└────────────────────┬────────────────────────────────┘
-                     │
-          ┌──────────▼──────────┐
-          │      agent.js       │
-          │  executeRiskOn/Off  │
-          │  multi-user loop    │
-          └──────┬──────┬───────┘
-                 │      │
-        ┌────────▼─┐  ┌─▼────────┐
-        │ regime.js│  │  arc.js  │
-        │ 3-agent  │  │ App Kit  │
-        │ council  │  │ bridge   │
-        └────────┬─┘  └─▼────────┘
-                 │    Circle Unified Balance
-        ┌────────▼──────────────┐      ┌─────────────────────┐
-        │      earn.js          │      │   recorder.js       │
-        │  LI.FI Earn API       │      │  PositionRecorder   │
-        │  vault selection      │      │  Arc Testnet        │
-        └───────────────────────┘      └─────────────────────┘
+BTC Market Data (Hyperliquid)
+        │
+        ▼
+┌───────────────────────────────────┐
+│         Triple-A Council          │
+│                                   │
+│  Architect  →  Auditor  →  Arbiter│
+│  (bullish?)    (challenge) (verdict)│
+└───────────────┬───────────────────┘
+                │ regime signal
+                ▼
+        executeRebalance()
+                │
+        ┌───────┴────────┐
+        │                │
+   Odos v3 SOR      Aave v3 Pool
+  (cmETH/mETH       (deposit /
+   swaps)            withdraw)
+        │                │
+        └───────┬────────┘
+                ▼
+        Mantle Wallet
 ```
 
-### Key Files
+---
 
-| File | Description |
-|------|-------------|
-| `ui-server.js` | Express server, SSE live log, REST endpoints, 60-min scheduler |
-| `agent.js` | Core rebalance logic: `executeRiskOn`, `executeRiskOff`, multi-user DCW loop |
-| `regime.js` | 3-agent market analysis (Architect → Auditor → Arbiter) |
-| `arc.js` | Circle Arc App Kit integration: `unifiedDeposit`, `unifiedSpend`, bidirectional bridge |
-| `earn.js` | LI.FI Earn API client: vault discovery, APY ranking, pagination |
-| `scorer.js` | Signal scoring from funding rate, OI delta, price trend |
-| `rebalance.js` | Rebalance decision logic and threshold evaluation |
-| `tools.js` | Shared utilities: Hyperliquid data fetch, snapshot management |
-| `composer.js` | LI.FI Composer integration: vault deposit routing, cross-chain status polling (used by rebalance.js CLI flow) |
-| `recorder.js` | PositionRecorder contract client: `recordOpen`, `recordClose` onchain audit trail |
-| `contracts/PositionRecorder.sol` | Solidity contract deployed on Arc Testnet — emits `PositionOpened` / `PositionClosed` events |
-| `public/index.html` | Single-file frontend: 2-column dashboard, live SSE log, SVG BTC chart |
+## How It Works
 
-### Database Schema
+### 1. Regime Detection (`regime.js`)
+Every 30 minutes, the **Triple-A council** evaluates BTC market signals:
+- ATR%, funding rate, OI change, signal score (−3 to +3)
+- **Architect** builds the bull/bear case
+- **Auditor** challenges the hypothesis
+- **Arbiter** renders the final verdict → `risk_on` / `neutral` / `risk_off`
 
-```sql
--- users.db
-users          (eoa, wallet_address, wallet_id, created_at)
-regime_history (id, regime, confidence, phase, signal_score, btc_price, created_at)
-user_positions (id, eoa, type, amount, vault_address, chain, created_at)
-```
+### 2. Rebalance Execution (`agent.js`)
+On regime change (or manual trigger):
+1. Withdraw all aTokens from Aave
+2. Sell existing holdings → USDC via Odos v3
+3. Buy target allocation tokens via Odos v3
+4. Deposit stable portion → Aave best yield
+
+### 3. Yield Optimization
+- **cmETH / mETH APY**: DefiLlama
+- **Aave stable APY**: Aave v3 on-chain RAY + Merkl incentives
+- Blended APY calculated per regime and displayed in UI
 
 ---
 
@@ -124,111 +77,85 @@ user_positions (id, eoa, type, amount, vault_address, chain, created_at)
 
 | Layer | Technology |
 |-------|-----------|
-| Smart Contracts | Solidity (PositionRecorder) deployed on Arc Testnet |
-| Custody | Circle Developer-Controlled Wallets (DCW) |
-| Cross-chain | Circle Arc App Kit — Unified Balance |
-| Yield | LI.FI Earn API |
-| AI Agents | Google Gemini 2.5 Flash Lite (via OpenRouter) |
-| Market Data | Hyperliquid public API |
-| Backend | Node.js, Express, better-sqlite3 |
-| Frontend | Vanilla JS, SSE, SVG |
+| Blockchain | Mantle (chainId 5000) |
+| Liquid Staking | cmETH (Veda/EigenLayer/Karak/Symbiotic), mETH |
+| Stable Yield | Aave v3 (USDC / USDT0 / GHO / USDe) |
+| DEX Routing | Odos v3 SOR |
+| AI Council | Gemini (Architect) / OpenRouter (Auditor) / Gemini (Arbiter) |
+| APY Data | DefiLlama + Aave on-chain + Merkl API |
+| A2A Protocol | Google A2A (`/.well-known/agent.json`) |
+| Backend | Node.js + ethers v6 |
+| Frontend | Vanilla JS + SSE (real-time log streaming) |
 
 ---
 
 ## Setup
 
-### Prerequisites
-
-- Node.js 18+
-- Circle developer account (DCW + App Kit access)
-- OpenRouter API key
-- LI.FI API key (optional, increases rate limits)
-
-### Environment Variables
-
-```env
-# Circle
-CIRCLE_API_KEY=
-CIRCLE_WALLET_SET_ID=
-CIRCLE_APP_ID=
-ARC_CLIENT_ID=
-
-# AI
-OPENROUTER_API_KEY=
-
-# LI.FI (optional)
-LIFI_API_KEY=
-
-# Notifications
-DISCORD_WEBHOOK_URL=
-
-# Server
-PORT=5003
-```
-
-### Install & Run
-
 ```bash
-git clone https://github.com/cryptohakka/arcana
-cd arcana
+git clone https://github.com/cryptohakka/stratumflow
+cd stratumflow
 npm install
 cp .env.example .env
 # fill in .env
-
-node ui-server.js
-# → http://localhost:5003
+npm start
 ```
 
-### systemd (production)
+### `.env` variables
 
-```bash
-sudo systemctl start arcana-ui
-sudo systemctl enable arcana-ui
+```
+RPC_URL=https://rpc.mantle.xyz
+PRIVATE_KEY=0x...
+ODOS_API_KEY=...
+OPENROUTER_API_KEY=...
+GEMINI_API_KEY=...
+MERKL_API_KEY=...
+
+# Token addresses (Mantle)
+MNT=0xdeaddeaddeaddeaddeaddeaddeaddeaddead0000
+METH=0xcDA86A272531e8640cD7F1a92c01839911B90bb0
+CMETH=0xE6829d9a7eE3040e1276Fa75293Bde931859e8fA
+USDC=0x09Bc4E0D864854c6aFB6eB9A9cdF58aC190D0dF9
+USDT0=0x201EBa5CC46D216Ce6DC03F6a759e8E766e956aE
+GHO=0xb4d5a1E15D5b36b6c7a1D53401b63dEc6F2CF3C
+USDE=0x5d3a1Ff2b6BAb83b63cd9AD0787074081a52ef34
+
+# Aave aToken addresses
+AAVE_AUSDC=0xcb8164415274515867ec43CbD284ab5d6d2b304F
+AAVE_AUSDT0=0x7053bAD224F0C021839f6AC645BdaE5F8b585b69
+AAVE_AGHO=0x8917d4eE4609f991b559DAF8D0aD1b892c13B127
+AAVE_AUSDE=0xb9aCA933C9c0aa854a6DBb7b12f0CC3FdaC15ee7
+
+AUTO_REBALANCE=true
+REBALANCE_INTERVAL_MS=1800000
 ```
 
 ---
 
-## API Endpoints
+## API
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/regime` | Latest regime JSON |
-| `GET` | `/api/balances` | Unified Balance across all chains |
-| `GET` | `/api/snapshots` | Last 8 BTC price snapshots (24h) |
-| `GET` | `/api/tx-history` | Transaction history |
-| `GET` | `/api/users` | Registered user count |
-| `POST` | `/api/user/register` | Register EOA → derive DCW |
-| `POST` | `/api/regime-check` | Manual regime trigger |
-| `POST` | `/api/risk-on` | Manual risk-on rebalance |
-| `POST` | `/api/risk-off` | Manual risk-off rebalance |
-| `GET` | `/events` | SSE stream (live log + regime updates) |
+### UI Server (port 5004)
 
----
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/regime` | Current regime + council reasoning |
+| GET | `/api/balances` | Wallet holdings + Aave positions with USD |
+| GET | `/api/yields` | APY data for all tokens |
+| GET | `/api/snapshots` | BTC market snapshots (last 8) |
+| POST | `/api/regime-check` | Trigger immediate regime evaluation |
+| POST | `/api/rebalance` | Trigger immediate rebalance |
+| POST | `/api/force-regime` | Override regime `{"regime":"risk_on"}` |
+| GET | `/events` | SSE stream for live log |
 
-## Live Demo
+### A2A Server (port 5005)
 
-> Deployed on Arc Testnet. Connect MetaMask to try the full flow.
-
-**URL:** https://arcana.a2aflow.space
-
-1. Connect wallet → agent DCW is auto-created
-2. Send USDC to your deposit address on Arc Testnet
-3. Watch the 60-min regime cycle rebalance your position automatically
-4. Use **▶ Regime Check / Risk-On / Risk-Off** buttons in Live Log for instant demo
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/.well-known/agent.json` | A2A agent card |
+| POST | `/a2a/tasks/send` | Send rebalance/regime task |
+| GET | `/a2a/health` | Health check |
 
 ---
 
 ## License
 
 MIT
-
----
-
-## Roadmap
-
-- [ ] Capital allocation % display (parked vs deployed breakdown)
-- [ ] Vault risk metadata (TVL, Protocol Age, Risk level)
-- [ ] Pending bridge status card (Pending → Confirmed → Minted)
-- [ ] Auto-execution mode (currently human-in-the-loop by design)
-- [ ] Risk-Adjusted Yield scoring for vault selection (mainnet: TVL + audit history + Lindy effect, not just APY)
-- [ ] Market data redundancy (Hyperliquid primary + Binance/Pyth fallback)

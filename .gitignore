@@ -1,9 +1,8 @@
 .env
 node_modules/
-tx_history.json
-positions.json
-regime.json
-snapshots.json
 *.log
+/tmp/
+regime.json
+snapshots_phase.json
 *.db
-*.dat
+*.sqlite

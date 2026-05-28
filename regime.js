@@ -25,8 +25,8 @@ async function infer(messages, maxTokens = 800, agentName = 'Arcana') {
       headers: {
         'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://arcana.a2aflow.space',
-        'X-Title': `Arcana ${agentName}`,
+        'HTTP-Referer': 'https://stratumflow.a2aflow.space',
+        'X-Title': `StratumFlow ${agentName}`,
       }
     }
   );
@@ -190,7 +190,7 @@ Provide:
 2. Primary scenario (most likely regime)
 3. Contrarian scenario (what if the primary is wrong?)
 
-For portfolio management context: determine if conditions favor RISK-ON (deploy capital into yield vaults) or RISK-OFF (park capital in USYC stable yield).
+For portfolio management context: determine if conditions favor RISK-ON (deploy into cmETH + highest Aave stable yield on Mantle) or RISK-OFF (consolidate into USDY/USDC stable yield on Mantle).
 
 Be concise, 3-5 sentences. Start directly with your analysis — no preamble like 'Here is my analysis'.`;
 
@@ -226,7 +226,7 @@ Auditor: ${auditorReply}
 
 Return ONLY valid JSON, no explanation outside the JSON:
 {
-  "regime": "risk_on" | "risk_off",
+  "regime": "risk_on" | "neutral" | "risk_off",
   "confidence": 0.0-1.0,
   "phase": "bull" | "range" | "bear",
   "bias": "long" | "short" | "neutral",
@@ -249,7 +249,7 @@ Rules:
   const result = JSON.parse(match[0]);
 
   // Validate
-  if (!['risk_on', 'risk_off'].includes(result.regime)) result.regime = 'risk_off';
+  if (["risk_on","neutral","risk_off"].indexOf(result.regime) === -1) result.regime = "neutral";
   if (typeof result.confidence !== 'number') result.confidence = 0.5;
   if (!['bull', 'range', 'bear'].includes(result.phase)) result.phase = 'range';
   if (!['long', 'short', 'neutral'].includes(result.bias)) result.bias = 'neutral';
@@ -291,7 +291,7 @@ Rules:
   fs.writeFileSync(REGIME_PATH, JSON.stringify(regime, null, 2));
 
   // Summary to Discord
-  const emoji = result.regime === 'risk_on' ? '🟢' : '🔴';
+  const emoji = result.regime === "risk_on" ? "🟢" : result.regime === "neutral" ? "🟡" : "🔴";
   const rebalanceStr = result.rebalance ? '✅ Rebalance triggered' : '⏸️ Hold current allocation';
   await sendAsAgent('arbiter', `${emoji} **Final Decision: ${result.regime.toUpperCase()}**\nPhase: ${result.phase} | Confidence: ${result.confidence} | Bias: ${result.bias}\n${result.reasoning}\n${rebalanceStr}`);
 
