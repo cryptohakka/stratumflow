@@ -976,17 +976,26 @@ async function run() {
   while (true) {
     try {
       console.log('\n[stratumflow] running regime detection...');
+      const lastRegime = getLastRegime();          // save前に取得
       const regime     = await detectRegime();
       saveRegime(regime);
       // RWAリスク更新はexecuteRebalance内Guard3で実施済み（重複呼び出し防止）
-      const lastRegime = getLastRegime();
-
       const regimeChanged   = lastRegime !== null && lastRegime !== regime.regime;
       const shouldRebalance = regime.rebalance || regimeChanged;
 
       if (!shouldRebalance) {
         await notify(`⏸️ **Hold** — regime=${regime.regime.toUpperCase()} confidence=${regime.confidence} (no change)`);
       } else {
+        if (regimeChanged) {
+          try {
+            const recorder = getRecorder();
+            const tx = await recorder.recordRegimeChange(lastRegime, regime.regime, Math.round((regime.confidence || 0) * 100));
+            await tx.wait();
+            console.log('[recorder] recordRegimeChange tx:', tx.hash);
+          } catch (e) {
+            console.warn('[recorder] recordRegimeChange failed:', e.message?.slice(0, 80));
+          }
+        }
         await executeRebalance(regime);
       }
     } catch (e) {
