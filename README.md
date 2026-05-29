@@ -78,11 +78,11 @@ The `/rwa` tab exposes the live risk engine that can override regime signals:
 Composite score (0–1) measuring portfolio exit safety:
 
 ```
-RWA Score = exitNorm×0.50 + pegHealth×0.30 + utilHealth×0.20
+RWA Score = exitNorm×0.50 + depegNorm×0.30 + utilNorm×0.20
 
-exitNorm  = 1 − min(exitDepth / 200,000, 1.0)
-pegHealth = 1 − max(depegBps / 100, 0)
-utilHealth = 1 if util < 95% else 0
+exitNorm  = 1 − min(exitDepth / 200,000, 1.0)   (omitted if no data)
+depegNorm = min(maxDepeg / 2.0, 1.0)
+utilNorm  = min(avgUtil / 90.0, 1.0)
 ```
 
 ### Exit Depth (via Odos SOR)
@@ -93,9 +93,10 @@ Live simulation of a $100K swap's price impact on the current regime's primary a
 
 | Condition | Action |
 |-----------|--------|
-| $100K swap price impact > 2% | Block risk-on, force neutral |
-| Depeg > 50bps | Downgrade stable selection |
-| Aave util > 95% | Exclude from stable selection |
+| Score ≥ 70 or exit depth < $200K | Force RISK_OFF |
+| Score 50–69 | Cap at NEUTRAL (block RISK_ON) |
+| Score < 50 | No override — BTC regime applies |
+| $100K swap impact > 2% | Exclude from exit depth score |
 
 This is the core differentiator: **automated risk management that constrains the AI's own bullish signals.**
 
@@ -108,7 +109,7 @@ This is the core differentiator: **automated risk management that constrains the
 - Risk-adjusted stablecoin selection across Mantle Aave pools
 - Regime-gated allocation with confidence thresholds
 - A2A-compatible API for multi-agent orchestration — external agents can query regime state, trigger rebalances, or coordinate execution flows
-- Autonomous execution on Mantle via Merchant Moe LB Router
+- Autonomous execution on Mantle via Odos SOR with Merchant Moe LB Router fallback
 
 ---
 
@@ -144,7 +145,7 @@ BTC signals (price, funding, OI, news)
 | Chain | Mantle |
 | Yield assets | cmETH, mETH |
 | Stable yield | Aave (USDe / USDC / USDT0 / GHO) — dynamic |
-| DEX routing | Merchant Moe LB Router, Odos SOR |
+| DEX routing | Odos SOR (primary), Merchant Moe LB Router (fallback) |
 | Price / liquidity | DefiLlama, Odos price impact API |
 | AI council | OpenRouter (Gemini) |
 | A2A protocol | A2A / MCP compatible |
