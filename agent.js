@@ -875,11 +875,21 @@ async function executeRebalance(regime, { force = false } = {}) {
 
 // ── Main loop ─────────────────────────────────────────────────────────────────
 async function liquidityLoop() {
-  // 初回即時実行
-  try { await fetchExitDepth(); } catch (e) { console.warn('[liquidity] init:', e.message); }
+  const now = Date.now();
+  const nextHour = Math.ceil(now / (60 * 60 * 1000)) * (60 * 60 * 1000);
+  await new Promise(r => setTimeout(r, nextHour - now));
   while (true) {
-    await new Promise(r => setTimeout(r, 60 * 60 * 1000));
-    try { await fetchExitDepth(); } catch (e) { console.warn('[liquidity] loop:', e.message); }
+    for (let i = 0; i < 3; i++) {
+      try {
+        await fetchExitDepth();
+        break;
+      } catch (e) {
+        console.warn(`[liquidity] attempt ${i+1}/3 failed:`, e.message);
+        if (i < 2) await new Promise(r => setTimeout(r, 5 * 60 * 1000));
+      }
+    }
+    const next = Math.ceil(Date.now() / (60 * 60 * 1000)) * (60 * 60 * 1000);
+    await new Promise(r => setTimeout(r, next - Date.now()));
   }
 }
 
