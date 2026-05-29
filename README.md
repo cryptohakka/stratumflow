@@ -210,6 +210,14 @@ BTC signals (price, funding, OI, news)
 
 ---
 
+## Agent Identity
+
+StratumFlow is registered on the ERC-8004 Identity Registry as a verifiable on-chain AI agent.
+
+- **Agent ID:** [Mantle #107](https://8004scan.io/agents/mantle/107)
+- **Wallet:** `0x694fF912a9558b97e28135546c33cd85a3cd5325`
+- **RebalanceRecorder:** [`0x3d99E72229BF6DD14697751971C81D93529BeEff`](https://explorer.mantle.xyz/address/0x3d99E72229BF6DD14697751971C81D93529BeEff)
+
 ## License
 
 MIT
