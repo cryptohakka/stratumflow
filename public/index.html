@@ -411,12 +411,12 @@ function regimeColor(r) {
   return '#f05a5a';
 }
 
-function addLog(line) {
+function addLog(line, ts) {
   const el = document.getElementById('log-body');
   const d = document.createElement('div');
   d.className = 'log-line';
-  const ts = new Date().toTimeString().slice(0, 8);
-  d.textContent = ts + '  ' + String(line).replace(/\*\*/g, '').replace(/\*/g, '');
+  const timeStr = ts ? new Date(ts).toTimeString().slice(0, 8) : new Date().toTimeString().slice(0, 8);
+  d.textContent = timeStr + '  ' + String(line).replace(/\*\*/g, '').replace(/\*/g, '');
   el.insertBefore(d, el.firstChild);
   if (el.children.length > 100) el.removeChild(el.lastChild);
 }
@@ -610,7 +610,7 @@ function connectSSE() {
   es.onmessage = e => {
     try {
       const d = JSON.parse(e.data);
-      if (d.type === 'log')    addLog(d.line);
+      if (d.type === 'log')    addLog(d.line, d.ts);
       if (d.type === 'regime') renderRegime(d.data);
       if (d.type === 'done')   { loadRegime(); loadPortfolio(); }
     } catch {}
