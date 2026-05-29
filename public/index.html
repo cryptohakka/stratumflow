@@ -301,6 +301,7 @@ html, body { background: var(--m-bg); color: var(--m-text); font-family: -apple-
         <button class="btn btn-warn" onclick="forceRegime('neutral')">Neutral</button>
         <button class="btn btn-danger" onclick="forceRegime('risk_off')">Risk-off</button>
       </div>
+
     </div>
 
     <!-- COL 2: Regime + Council + Alloc -->
@@ -364,6 +365,13 @@ html, body { background: var(--m-bg); color: var(--m-text); font-family: -apple-
             <div class="arbiter-verdict-label">▸ Arbiter verdict</div>
             <div class="arbiter-verdict-text" id="council-arb">—</div>
           </div>
+        </div>
+        <div id="rwa-banner" onclick="window.location.href='/rwa'" style="cursor:pointer;padding:8px 1.25rem;border-top:1px solid var(--m-border);display:flex;align-items:center;gap:8px;font-size:11px;color:var(--m-muted);">
+          <span style="color:var(--m-label);letter-spacing:0.06em;">RWA RISK</span>
+          <span id="rwa-banner-score" style="font-family:monospace;font-weight:700;color:var(--m-text);">— / 100</span>
+          <span id="rwa-banner-level" style="font-weight:600;">—</span>
+          <span style="color:var(--m-border2);">→</span>
+          <span>override: <span id="rwa-banner-override" style="font-weight:600;">—</span></span>
         </div>
       </div>
 
@@ -533,14 +541,14 @@ async function loadPortfolio() {
       const amt = h ? h.amount : 0;
       const usd = h ? (h.usd || 0) : 0;
       const apy = t.fixedApy != null ? t.fixedApy : (_yieldsData && t.apyKey ? _yieldsData[t.apyKey] : null);
-      const badgeHtml = t.badges ? `<span class="points-badges">${t.badges.map(b => {
+      const badgeHtml = t.badges ? `<span class="points-badges"><span style="color:#a78bfa;font-size:9px;font-weight:600;margin-right:4px;">+pts</span>${t.badges.map(b => {
         const tips = {
           E: 'EigenLayer: Ethereum restaking protocol. eigenlayer.xyz',
           K: 'Karak: Universal restaking layer. karak.network',
           S: 'Symbiotic: Generalized shared security. symbiotic.fi',
           V: 'Veda: DeFi Earn Network powering cmETH. veda.tech',
         };
-        return `<span class="points-badge" data-tip="${tips[b]}">${b}</span>`;
+        return `<span class="points-badge" data-tip="${tips[b]}" title="+points">${b}</span>`;
       }).join('')}</span>` : '';
       const row = document.createElement('div');
       row.className = 'portfolio-row';
@@ -587,6 +595,23 @@ async function loadYields() {
   } catch(e) {}
 }
 
+async function loadRwaBanner() {
+  try {
+    const res = await fetch('/api/rwa-risk');
+    const d = await res.json();
+    const score = d.score ?? null;
+    const level = score == null ? '—' : score >= 70 ? 'HIGH RISK' : score >= 50 ? 'ELEVATED' : 'NORMAL';
+    const color = score == null ? 'var(--m-muted)' : score >= 70 ? '#ff5050' : score >= 50 ? '#ffc800' : '#00ffa0';
+    const override = d.override ? d.override.replace('_', ' ') : 'none';
+    const overrideColor = d.override ? '#ffc800' : 'var(--m-muted)';
+    const el = document.getElementById('rwa-banner-score');
+    if (el) { el.textContent = score != null ? score + ' / 100' : '— / 100'; el.style.color = color; }
+    const lel = document.getElementById('rwa-banner-level');
+    if (lel) { lel.textContent = level; lel.style.color = color; }
+    const oel = document.getElementById('rwa-banner-override');
+    if (oel) { oel.textContent = override; oel.style.color = overrideColor; }
+  } catch(e) {}
+}
 async function loadRegime() {
   try {
     const res = await fetch('/api/regime');
@@ -612,7 +637,7 @@ function connectSSE() {
       const d = JSON.parse(e.data);
       if (d.type === 'log')    addLog(d.line, d.ts);
       if (d.type === 'regime') renderRegime(d.data);
-      if (d.type === 'done')   { loadRegime(); loadPortfolio(); }
+      if (d.type === 'done')   { loadRegime(); loadPortfolio(); loadRwaBanner(); }
     } catch {}
   };
   es.onerror = () => {
@@ -654,7 +679,7 @@ function syncLogHeight() {
 window.addEventListener('resize', syncLogHeight);
 setTimeout(syncLogHeight, 400);
 
-loadYields().then(() => { loadRegime(); loadPortfolio(); });
+loadYields().then(() => { loadRegime(); loadPortfolio(); loadRwaBanner(); });
 connectSSE();
 </script>
 </body>
