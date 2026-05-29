@@ -27,7 +27,6 @@ const TOKENS = {
   MNT:   process.env.MNT,
   METH:  process.env.METH,
   CMETH: process.env.CMETH,
-  USDY:  process.env.USDY,
   USDC:  process.env.USDC,
   USDE:  process.env.USDE,
   USDT0: process.env.USDT0,
@@ -36,8 +35,6 @@ const TOKENS = {
 
 // ── Allocation targets per regime ─────────────────────────────────────────────
 // risk_on  : cmETH 70% + Aave highest stable 30%
-// neutral  : mETH 50% + USDY 50%
-// risk_off : USDY 70% + USDC 30%
 const ALLOCATIONS = {
   risk_on:  [{ token: 'CMETH', pct: 0.70 }, { token: 'USDC', pct: 0.30, inAave: true }],
   neutral:  [{ token: 'METH',  pct: 0.50 }, { token: 'USDC', pct: 0.50, inAave: true }],
@@ -72,10 +69,6 @@ const LB_ROUTER_ABI = [
   ) external payable returns (uint256 amountOut)`,
 ];
 
-const MOE_ROUTER_ABI = [
-  'function getAmountsOut(uint256 amountIn, address[] path) external view returns (uint256[] amounts)',
-  'function swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, address[] path, address to, uint256 deadline) external returns (uint256[] amounts)',
-];
 
 const LB_QUOTER_ABI = [
   `function findBestPathFromAmountIn(
@@ -304,7 +297,6 @@ async function getBestAaveStableApy() {
   for (const sym of STABLE_TOKENS) {
     if (!baseApys[sym]) continue;
     const totalApy = baseApys[sym].apy + (incentiveApys[sym] || 0);
-    // depeg/utilはfetchRwaRiskから渡されるが、ここでは利用不可なので暫定0
     const effectiveScore = totalApy;
     stableScores[sym] = { apy: totalApy, base: baseApys[sym].apy, incentive: incentiveApys[sym] || 0, effectiveScore };
     if (effectiveScore > best.effectiveScore) {
@@ -381,7 +373,6 @@ async function executeOdosSwap(fromSymbol, toSymbol, amountIn) {
   if (!quote.pathId) throw new Error('Odos quote failed: ' + JSON.stringify(quote).slice(0,100));
   console.log(`[odos-quote] ${fromSymbol}→${toSymbol} out: ${ethers.formatUnits(quote.outAmounts[0], toSymbol==='USDC'?6:18)}`);
 
-  // rate limit対策
   await new Promise(r => setTimeout(r, 1500));
   // 2. Assemble
   const asmRes = await fetch('https://enterprise-api.odos.xyz/sor/assemble', {
@@ -410,65 +401,6 @@ async function executeOdosSwap(fromSymbol, toSymbol, amountIn) {
   });
   const receipt = await tx.wait();
   console.log(`[odos-swap] tx: ${receipt.hash}`);
-  return receipt.hash;
-}
-
-// USDC→METH/CMETH用ルート
-const MOE_ROUTES = {
-  'USDC→METH':  [process.env.USDC, process.env.WMNT, process.env.METH],
-  'USDC→CMETH': [process.env.USDC, process.env.WMNT, process.env.METH, process.env.CMETH],
-  'METH→USDC':  [process.env.METH, process.env.WMNT, process.env.USDC],
-  'CMETH→USDC': [process.env.CMETH, process.env.METH, process.env.WMNT, process.env.USDC],
-  'METH→CMETH': [process.env.METH, process.env.CMETH],
-  'CMETH→METH': [process.env.CMETH, process.env.METH],
-};
-
-async function getMoeQuote(fromSymbol, toSymbol, amountIn) {
-  const key = fromSymbol + '→' + toSymbol;
-  const route = MOE_ROUTES[key];
-  if (!route) return null;
-  const provider = getProvider();
-  const router = new ethers.Contract(process.env.MOE_ROUTER, MOE_ROUTER_ABI, provider);
-  const fromDec = fromSymbol === 'USDC' ? 6 : 18;
-  const amountInWei = ethers.parseUnits(parseFloat(amountIn.toFixed(fromDec)).toString(), fromDec);
-  try {
-    const amounts = await router.getAmountsOut(amountInWei, route);
-    const toDec = toSymbol === 'USDC' ? 6 : 18;
-    return {
-      amountOut: parseFloat(ethers.formatUnits(amounts[amounts.length-1], toDec)),
-      route,
-      amountInWei,
-    };
-  } catch(e) {
-    console.warn('[moe-quote]', key, 'failed:', e.message?.slice(0,60));
-    return null;
-  }
-}
-
-async function executeMoeSwap(fromSymbol, toSymbol, amountIn, slippagePct = 0.5) {
-  const signer = getSigner();
-  const router = new ethers.Contract(process.env.MOE_ROUTER, MOE_ROUTER_ABI, signer);
-  const quote = await getMoeQuote(fromSymbol, toSymbol, amountIn);
-  if (!quote) throw new Error(`No MoeRouter route for ${fromSymbol}→${toSymbol}`);
-  const fromDec = fromSymbol === 'USDC' ? 6 : 18;
-  const toDec   = toSymbol  === 'USDC' ? 6 : 18;
-  // approve if needed
-  const fromAddr = quote.route[0];
-  const fromToken = new ethers.Contract(fromAddr, ERC20_ABI, signer);
-  const allowance = await fromToken.allowance(signer.address, process.env.MOE_ROUTER);
-  if (allowance < quote.amountInWei) {
-    const tx = await fromToken.approve(process.env.MOE_ROUTER, ethers.MaxUint256);
-    await tx.wait();
-  }
-  const amountOutMin = ethers.parseUnits(
-    (quote.amountOut * (1 - slippagePct/100)).toFixed(toDec > 6 ? 8 : 6), toDec
-  );
-  const deadline = Math.floor(Date.now()/1000) + 300;
-  const tx = await router.swapExactTokensForTokens(
-    quote.amountInWei, amountOutMin, quote.route, signer.address, deadline
-  );
-  const receipt = await tx.wait();
-  console.log(`[moe-swap] tx: ${receipt.hash}`);
   return receipt.hash;
 }
 
@@ -520,7 +452,6 @@ async function executeSwap(fromSymbol, toSymbol, amountIn, slippagePct = 0.5) {
   const deadline = Math.floor(Date.now() / 1000) + 300;
   let tx;
   if (isMNT) {
-    // ネイティブMNT → swapExactNATIVEForTokens
     tx = await router.swapExactNATIVEForTokens(
       amountOutMin,
       { pairBinSteps: quote.binSteps, versions: quote.versions, tokenPath: [WMNT, toAddr] },
@@ -582,7 +513,6 @@ function getLastRegime() {
   return row?.regime || null;
 }
 
-// 直近n件のregimeを取得
 function getRecentRegimes(n) {
   return getDb()
     .prepare('SELECT regime FROM regime_history ORDER BY id DESC LIMIT ?')
@@ -641,7 +571,6 @@ async function fetchRwaRisk(regimeType = 'risk_on') {
   }
   const maxDepeg = Math.max(...Object.values(depegByToken));
 
-  // 3. Exit depth — Odos APIで取得してhistoryにも書き込む(1h cache)
   let exitDepthTotal = EXIT_DEPTH_THRESHOLD * 2;
   let cmETH_100k = null, cmETH_500k = null, mETH_100k = null, mETH_500k = null;
   try {
@@ -651,7 +580,6 @@ async function fetchRwaRisk(regimeType = 'risk_on') {
     const lastEntry = h.length > 0 ? h[h.length - 1] : null;
     const age = lastEntry ? Date.now() - new Date(lastEntry.ts).getTime() : Infinity;
     if (age < 60 * 60 * 1000) {
-      // キャッシュ有効 — 再取得しない
       cmETH_100k = lastEntry.cmETH_100k; cmETH_500k = lastEntry.cmETH_500k;
       mETH_100k  = lastEntry.mETH_100k;  mETH_500k  = lastEntry.mETH_500k;
       console.log('[rwa] exit depth cache hit');
@@ -666,7 +594,6 @@ async function fetchRwaRisk(regimeType = 'risk_on') {
       }, { headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ODOS_API_KEY }, timeout: 12000 });
       return r.data.priceImpact ?? null;
     }
-    // cmETH/mETH価格をDefiLlamaから取得
     const llamaRes = await axios.get(
       `https://coins.llama.fi/prices/current/mantle:${process.env.CMETH},mantle:${process.env.METH}`,
       { timeout: 8000 }
@@ -689,7 +616,6 @@ async function fetchRwaRisk(regimeType = 'risk_on') {
     } // end else
   } catch (e) { console.warn('[rwa] exit depth:', e.message); }
 
-  // regime別exit depth判定 (キャッシュヒット/ミス共通)
   const cmOk = cmETH_100k !== null && cmETH_100k > -2;
   const meOk = mETH_100k  !== null && mETH_100k  > -2;
   let monitoredToken = null;
@@ -707,8 +633,6 @@ async function fetchRwaRisk(regimeType = 'risk_on') {
   }
   console.log(`[rwa] exit depth cmETH=${cmETH_100k?.toFixed(2)}% mETH=${mETH_100k?.toFixed(2)}% monitored=${monitoredToken}`);
 
-  // 4. スコア統合 (0-100)
-  // stableScores計算
   let stableScores = {};
   let selectedSym = 'USDC';
   try {
@@ -729,7 +653,6 @@ async function fetchRwaRisk(regimeType = 'risk_on') {
   const utilNorm  = Math.min(selectedStable.util  / 90.0, 1.0);
   const score     = Math.round((exitNorm * 0.50 + depegNorm * 0.30 + utilNorm * 0.20) * 100);
 
-  // 5. Override判定
   const override = exitDepthTotal < EXIT_DEPTH_THRESHOLD ? 'risk_off'
     : score >= 70 ? 'risk_off'
     : score >= 50 ? 'neutral_cap'
@@ -773,7 +696,6 @@ async function executeRebalance(regime, { force = false } = {}) {
     return;
   }
 
-  // ── Guard 1: confidence閾値 ──────────────────────────────────────────────
   if (!force && (regime.confidence || 0) < CONFIDENCE_THRESHOLD) {
     await notify(
       `⏸️ **Low confidence (${regime.confidence}) — skipping rebalance**\n` +
@@ -782,7 +704,6 @@ async function executeRebalance(regime, { force = false } = {}) {
     return;
   }
 
-  // ── Guard 2: regime確認 (2回連続同じregimeが出るまで待つ) ────────────────
   if (!force) {
     const recent = getRecentRegimes(CONFIRMATION_COUNT);
     const confirmed = recent.length >= CONFIRMATION_COUNT && recent.every(r => r === regimeType);
@@ -795,7 +716,6 @@ async function executeRebalance(regime, { force = false } = {}) {
   }
 
 
-  // ── Guard 3: RWAリスクチェック ───────────────────────────────────────────
   let rwaRisk = null;
   try {
     rwaRisk = await fetchRwaRisk(regimeType);
@@ -825,7 +745,6 @@ async function executeRebalance(regime, { force = false } = {}) {
   const finalRegimeType = regime.regime;
   const finalTargets    = ALLOCATIONS[finalRegimeType] || targets;
 
-  // risk_on: Aave stable枠をeffectiveScore(APY×depeg割引×util割引)で動的に決定
   let resolvedTargets = [...finalTargets];
   try {
     const rwaData = JSON.parse(require('fs').readFileSync('./data/rwa_risk.json', 'utf8'));
@@ -857,7 +776,6 @@ async function executeRebalance(regime, { force = false } = {}) {
 
   const BRIDGE_STABLE = 'USDC';
 
-  // ── Step 1: Aave vault から不要なものをwithdraw ────────────────────────────
   const targetAaveSymbols = new Set(
     resolvedTargets.filter(t => t.inAave).map(t => t.token)
   );
@@ -877,7 +795,6 @@ async function executeRebalance(regime, { force = false } = {}) {
     }
   }
 
-  // ── Step 2: 不要なspot tokenをBRIDGE_STABLEにswap ────────────────────────
   const targetSpotSymbols = new Set(
     resolvedTargets.filter(t => !t.inAave).map(t => t.token)
   );
@@ -890,11 +807,8 @@ async function executeRebalance(regime, { force = false } = {}) {
     try {
       await notify(`↩️ Selling ${holding.amount.toFixed(6)} ${holding.symbol} → ${BRIDGE_STABLE}`);
       const odosKey2 = holding.symbol + '→' + BRIDGE_STABLE;
-      const moeKey2 = odosKey2;
       const txHash = ['METH→USDC','CMETH→USDC'].includes(odosKey2)
         ? await executeOdosSwap(holding.symbol, BRIDGE_STABLE, holding.amount * 0.999)
-        : MOE_ROUTES[moeKey2]
-          ? await executeMoeSwap(holding.symbol, BRIDGE_STABLE, holding.amount * 0.999)
           : await executeSwap(holding.symbol, BRIDGE_STABLE, holding.amount * 0.999);
       await notify(`✅ Sold ${holding.symbol} — [tx](https://explorer.mantle.xyz/tx/${txHash})`);
     } catch (e) {
@@ -902,7 +816,6 @@ async function executeRebalance(regime, { force = false } = {}) {
     }
   }
 
-  // ── Step 3: 目標spot tokenをswap取得 ──────────────────────────────────────
   const refreshed     = await getPortfolio(wallet);
   const stableBalance = refreshed.find(b => b.symbol === BRIDGE_STABLE)?.amount || 0;
   for (const target of resolvedTargets) {
@@ -915,11 +828,8 @@ async function executeRebalance(regime, { force = false } = {}) {
     try {
       await notify(`→ Buying ${target.token} (${(target.pct*100).toFixed(0)}%) — ${swapAmt.toFixed(6)} ${BRIDGE_STABLE}`);
       const odosKey = BRIDGE_STABLE + '→' + target.token;
-      const moeKey = odosKey;
       const txHash = ['USDC→METH','USDC→CMETH'].includes(odosKey)
         ? await executeOdosSwap(BRIDGE_STABLE, target.token, swapAmt)
-        : MOE_ROUTES[moeKey]
-          ? await executeMoeSwap(BRIDGE_STABLE, target.token, swapAmt)
           : await executeSwap(BRIDGE_STABLE, target.token, swapAmt);
       await notify(`✅ Bought ${target.token} — [tx](https://explorer.mantle.xyz/tx/${txHash})`);
     } catch (e) {
@@ -976,10 +886,9 @@ async function run() {
   while (true) {
     try {
       console.log('\n[stratumflow] running regime detection...');
-      const lastRegime = getLastRegime();          // save前に取得
+      const lastRegime = getLastRegime();
       const regime     = await detectRegime();
       saveRegime(regime);
-      // RWAリスク更新はexecuteRebalance内Guard3で実施済み（重複呼び出し防止）
       const regimeChanged   = lastRegime !== null && lastRegime !== regime.regime;
       const shouldRebalance = regime.rebalance || regimeChanged;
 

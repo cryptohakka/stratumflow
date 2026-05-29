@@ -331,7 +331,6 @@ app.get('/api/liquidity', async (req, res) => {
 // ── /api/rwa-risk ─────────────────────────────────────────────────────────────
 const RWA_RISK_FILE = path.join(__dirname, 'data/rwa_risk.json');
 app.get('/api/rwa-risk', (req, res) => {
-  // agent.jsのrun()ループが定期更新 → UIはファイル読み取りのみ（外部APIコールなし）
   if (fs.existsSync(RWA_RISK_FILE)) {
     return res.json(JSON.parse(fs.readFileSync(RWA_RISK_FILE, 'utf8')));
   }

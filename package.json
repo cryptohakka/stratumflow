@@ -1,14 +1,22 @@
 {
   "name": "stratumflow",
   "version": "1.0.0",
-  "description": "AI-driven RWA portfolio rebalancer on Mantle — cmETH/mETH/USDY + Aave stable yield optimization",
+  "description": "AI-driven RWA portfolio rebalancer on Mantle — cmETH/mETH + Aave stable yield optimization",
   "main": "agent.js",
   "scripts": {
     "start": "node ui-server.js",
     "agent": "node agent.js",
     "regime": "node regime.js"
   },
-  "keywords": ["defi", "rwa", "mantle", "meth", "usdy", "aave", "ai", "agent"],
+  "keywords": [
+    "defi",
+    "rwa",
+    "mantle",
+    "meth",
+    "aave",
+    "ai",
+    "agent"
+  ],
   "author": "cryptohakka",
   "license": "ISC",
   "type": "commonjs",
@@ -17,6 +25,7 @@
     "better-sqlite3": "^12.10.0",
     "dotenv": "^16.6.1",
     "ethers": "^6.16.0",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "solc": "^0.8.35"
   }
 }

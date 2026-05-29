@@ -1,0 +1,25 @@
+{
+  "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+  "name": "StratumFlow",
+  "description": "Triple-A AI-driven RWA portfolio rebalancer on Mantle. Autonomous regime detection (risk_on/neutral/risk_off) with liquidity-aware overrides. All decisions recorded on-chain via RebalanceRecorder.",
+  "image": "https://stratumflow.a2aflow.space/logo.png",
+  "version": "1.0.0",
+  "endpoints": [
+    {
+      "type": "a2a",
+      "url": "https://stratumflow.a2aflow.space/a2a/tasks/send"
+    },
+    {
+      "type": "ui",
+      "url": "https://stratumflow.a2aflow.space"
+    }
+  ],
+  "payment": [
+    {
+      "type": "evm",
+      "address": "0x694fF912a9558b97e28135546c33cd85a3cd5325",
+      "chain": "mantle"
+    }
+  ],
+  "tags": ["defi", "rwa", "mantle", "portfolio-rebalancer", "triple-a", "ai-agent"]
+}
