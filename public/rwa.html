@@ -23,7 +23,7 @@
   --m-label: #4a7a60;
 }
 html, body { background: var(--m-bg); color: var(--m-text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
-.wrap { padding: 1.5rem 1rem; max-width: 1100px; margin: 0 auto; }
+.wrap { padding: 1.5rem 1rem; max-width: 960px; margin: 0 auto; }
 
 .header { display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem; }
 .logo { width: 28px; height: 28px; flex-shrink: 0; }
@@ -77,12 +77,12 @@ html, body { background: var(--m-bg); color: var(--m-text); font-family: -apple-
 .rwa-score-card { border-color: var(--m-accent); }
 .rwa-score-wrap { display: flex; align-items: center; gap: 24px; margin-bottom: 20px; }
 .rwa-score-left { flex: 1; }
-.rwa-score-num  { font-size: 56px; font-weight: 700; line-height: 1; color: var(--m-accent); font-family: monospace; }
+.rwa-score-num  { font-size: 36px; font-weight: 700; line-height: 1; color: var(--m-accent); font-family: monospace; }
 .rwa-score-label { font-size: 13px; color: var(--m-muted); margin-top: 6px; }
 .rwa-override-badge { margin-top: 10px; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; display: inline-block; }
 .rwa-override-badge.risk_off  { background: rgba(255,80,80,0.15); color: #ff5050; border: 1px solid #ff5050; }
 .rwa-override-badge.neutral_cap { background: rgba(255,200,0,0.15); color: #ffc800; border: 1px solid #ffc800; }
-.rwa-score-right { flex: 0 0 200px; }
+.rwa-score-right { flex: 0 0 220px; }
 .rwa-gauge-wrap  { position: relative; }
 .rwa-detail-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px; }
 .rwa-detail-item { background: rgba(0,255,160,0.04); border: 1px solid var(--m-border); border-radius: 6px; padding: 10px 12px; }
@@ -142,11 +142,10 @@ html, body { background: var(--m-bg); color: var(--m-text); font-family: -apple-
   <div id="loading" class="loading">fetching liquidity data…</div>
   <div id="main" style="display:none">
 
-
+    <div class="section-title">RWA Risk Score — Regime Override Engine</div>
     <!-- RWA Risk Score Panel -->
     <div class="grid1" id="rwa-risk-section" style="display:none">
       <div class="card rwa-score-card">
-        <div class="card-title">RWA risk score — regime override engine</div>
         <div class="rwa-score-wrap">
           <div class="rwa-score-left">
             <div class="rwa-score-num" id="rwa-score-num">—</div>
@@ -155,7 +154,15 @@ html, body { background: var(--m-bg); color: var(--m-text); font-family: -apple-
           </div>
           <div class="rwa-score-right">
             <div class="rwa-gauge-wrap">
-              <canvas id="rwa-gauge" width="200" height="110"></canvas>
+              <div style="font-size:10px;color:var(--m-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Risk Level</div>
+              <div style="position:relative;height:20px;background:linear-gradient(to right,#00ffa0 0%,#00ffa0 50%,#ffc800 50%,#ffc800 70%,#ff5050 70%,#ff5050 100%);border-radius:10px;overflow:hidden;opacity:0.25;" id="rwa-bar-bg"></div>
+              <div style="position:relative;margin-top:-20px;height:20px;" id="rwa-bar-track">
+                <div id="rwa-bar-fill" style="height:100%;border-radius:10px;transition:width 0.8s ease;"></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--m-muted);margin-top:4px;font-family:monospace;">
+                <span>SAFE</span><span>MID</span><span>HIGH</span>
+              </div>
+              <div id="rwa-bar-pct" style="font-size:11px;color:var(--m-muted);text-align:right;margin-top:2px;font-family:monospace;"></div>
             </div>
           </div>
         </div>
@@ -193,9 +200,10 @@ html, body { background: var(--m-bg); color: var(--m-text); font-family: -apple-
       </div>
     </div>
 
+
+    <div class="section-title">Exit Depth</div>
     <!-- Exit Depth Panel -->
     <div class="card" style="margin-bottom:16px;">
-      <div class="card-title">exit depth — live score</div>
       <div id="exit-depth-summary" style="font-family:monospace;font-size:12px;color:var(--m-text);line-height:2;">—</div>
     </div>
     <div class="grid2">
@@ -209,6 +217,18 @@ html, body { background: var(--m-bg); color: var(--m-text); font-family: -apple-
       </div>
     </div>
 
+
+    <!-- 24h charts -->
+    <div class="grid2" id="charts-section" style="display:none">
+      <div class="card">
+        <div class="card-title">cmETH exit depth — 24h</div>
+        <canvas id="chart-cmeth" height="120"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title">mETH exit depth — 24h</div>
+        <canvas id="chart-meth" height="120"></canvas>
+      </div>
+    </div>
 
     <!-- backing asset summary -->
     <div class="grid1">
@@ -235,39 +255,30 @@ html, body { background: var(--m-bg); color: var(--m-text); font-family: -apple-
         <div class="backing-warning">⚠ Emergency exit: DEX only — cmETH→mETH→ETH redemption is delayed. StratumFlow monitors DEX depth as the sole real-time liquidity indicator.</div>
       </div>
     </div>
-    <!-- 24h charts -->
-    <div class="grid2" id="charts-section" style="display:none">
-      <div class="card">
-        <div class="card-title">cmETH exit depth — 24h</div>
-        <canvas id="chart-cmeth" height="120"></canvas>
+
+
+
+    
+
+
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-title">risk context</div>
+      <div class="context-box">
+<strong>Bybit Hack (Feb 21, 2025) — A Real Stress Test:</strong> The Lazarus Group stole 15,000 cmETH and 8,000 mETH from Bybit's cold wallet. The 8,000 mETH were immediately swapped to ETH via DEX across 3 transactions — DEX liquidity was sufficient and the exit completed. The 15,000 cmETH conversion was left <strong>incomplete due to on-chain liquidity constraints</strong>. The 8-hour redemption delay built into mETH Protocol gave the team time to pause the contract and recover all 15,000 cmETH (~$43M).<br><br>
+<strong>Key insight:</strong> Direct redemption (cmETH → mETH → ETH) is not an emergency exit — it is a delayed mechanism. DEX exit depth is the only real-time liquidity indicator during stress events. A $500K cmETH position on Mantle currently incurs <span id="ctx-500k">—</span> price impact to exit via USDC. StratumFlow monitors this depth continuously and biases toward risk-off allocation when $100K-tier impact exceeds <strong>3%</strong>.
       </div>
-      <div class="card">
-        <div class="card-title">mETH exit depth — 24h</div>
-        <canvas id="chart-meth" height="120"></canvas>
-      </div>
+      <div class="updated" id="updated-footer">—</div>
     </div>
 
+    <div class="section-title">Aave Stable Selection</div>
     <!-- Stable Panel -->
     <div class="card" style="margin-bottom:16px;">
-      <div class="card-title">aave stable selection</div>
       <div id="stable-selected-header" style="margin-bottom:12px;padding:10px 12px;background:rgba(0,255,160,0.04);border:1px solid rgba(0,255,160,0.15);border-radius:6px;font-family:monospace;font-size:12px;">—</div>
       <div id="stable-table-wrap"></div>
     </div>
 
-    <div class="grid1">
-      <div class="card">
-        <div class="card-title">risk context</div>
-        <div class="context-box">
-<strong>Bybit Hack (Feb 21, 2025) — A Real Stress Test:</strong> The Lazarus Group stole 15,000 cmETH and 8,000 mETH from Bybit's cold wallet. The 8,000 mETH were immediately swapped to ETH via DEX across 3 transactions — DEX liquidity was sufficient and the exit completed. The 15,000 cmETH conversion was left <strong>incomplete due to on-chain liquidity constraints</strong>. The 8-hour redemption delay built into mETH Protocol gave the team time to pause the contract and recover all 15,000 cmETH (~$43M).<br><br>
-          <strong>Key insight:</strong> Direct redemption (cmETH → mETH → ETH) is not an emergency exit — it is a delayed mechanism. DEX exit depth is the only real-time liquidity indicator during stress events. A $500K cmETH position on Mantle currently incurs <span id="ctx-500k">—</span> price impact to exit via USDC. StratumFlow monitors this depth continuously and biases toward risk-off allocation when $100K-tier impact exceeds <strong>3%</strong>.
-        </div>
-        <div class="updated" id="updated-footer">—</div>
-      </div>
-    </div>
-
   </div>
 </div>
-
 <script>
 function impactClass(pct) {
   if (pct < 0.5) return 'low';
@@ -423,13 +434,22 @@ async function loadRwaRisk() {
     const labelEl = document.getElementById('rwa-score-label');
     const badgeEl = document.getElementById('rwa-override-badge');
 
-    scoreEl.textContent = data.score;
+    // exitNorm/depegNorm/utilNormからfloatスコアを再計算
+    const _exitN  = 1 - Math.min((data.exitDepthTotal||0) / 200000, 1.0);
+    const _scores = data.stableScores || {};
+    const _selSym = Object.entries(_scores).sort((a,b)=>b[1].effectiveScore-a[1].effectiveScore)[0]?.[0]||'USDC';
+    const _sel    = _scores[_selSym] || {depeg:0, util:0};
+    const _depegN = Math.min(_sel.depeg / 2.0, 1.0);
+    const _utilN  = Math.min(_sel.util / 90.0, 1.0);
+    const floatScore = (_exitN*0.50 + _depegN*0.30 + _utilN*0.20) * 100;
+    scoreEl.textContent = floatScore.toFixed(1);
     const color = data.score >= 70 ? '#ff5050' : data.score >= 50 ? '#ffc800' : '#00ffa0';
     scoreEl.style.color = color;
 
-    const levelText = data.score >= 70 ? 'HIGH RISK' : data.score >= 50 ? 'ELEVATED' : 'NORMAL';
+    const levelText = data.score >= 70 ? 'HIGH RISK' : data.score >= 50 ? 'ELEVATED' : '';
     labelEl.textContent = levelText;
 
+    // exit $200K badge非表示
     if (data.override) {
       badgeEl.style.display = 'inline-block';
       badgeEl.className = 'rwa-override-badge ' + data.override;
@@ -439,7 +459,7 @@ async function loadRwaRisk() {
     }
 
     // ゲージ描画
-    drawGauge(document.getElementById('rwa-gauge'), data.score);
+    drawBar(data.score);
 
     // Panel 1: RWA Score formula
     const scores = data.stableScores || {};
@@ -450,7 +470,7 @@ async function loadRwaRisk() {
     const utilNorm  = Math.min(sel.util / 90.0, 1.0);
     const exitColor = data.exitDepthTotal < data.exitDepthThreshold ? '#ff5050' : '#00ffa0';
     const level = data.score >= 70 ? 'HIGH RISK' : data.score >= 50 ? 'ELEVATED' : 'NORMAL';
-    labelEl.innerHTML = `${level} <span style="font-size:11px;color:${exitColor};margin-left:12px;">exit $${(data.exitDepthTotal/1000).toFixed(0)}K</span>`;
+    labelEl.textContent = floatScore >= 70 ? 'HIGH RISK' : floatScore >= 50 ? 'ELEVATED' : '';
     const exitNormDisplay = 1 - Math.min(data.exitDepthTotal / 200000, 1.0);
     const exitScore  = exitNormDisplay * 50;
     const depegScore = depegNorm * 30;
@@ -480,7 +500,7 @@ async function loadRwaRisk() {
       `<span style="color:${exitColor};font-size:15px;">${exitScore.toFixed(1)}</span>` +
       `<span class="eq-label"> + </span><span style="color:${depegColor};font-size:15px;">${depegScore.toFixed(1)}</span>` +
       `<span class="eq-label"> + </span><span style="color:${utilColor};font-size:15px;">${utilScore.toFixed(1)}</span>` +
-      `<span class="eq-label"> = </span><span style="color:${exitColor};font-size:20px;font-weight:700;">${data.score}</span>`;
+      `<span class="eq-label"> = </span><span style="color:${exitColor};font-size:20px;font-weight:700;">${floatScore.toFixed(1)}</span>`;
 
     // Panel 2: Exit Depth live summary (regime-aware)
     const edSummary = document.getElementById('exit-depth-summary');
@@ -525,7 +545,7 @@ async function loadRwaRisk() {
         `&nbsp;&nbsp;APY <span style="color:#00c97a;">${sel.apy?.toFixed(2)}%</span>` +
         `&nbsp;&nbsp;depeg <span style="color:${dColor}">${sel.depeg.toFixed(3)}%</span>` +
         `&nbsp;&nbsp;util <span style="color:${uColor}">${sel.util.toFixed(1)}%</span>` +
-        `&nbsp;&nbsp;effectiveScore <span style="color:#00ffa0;">${sel.effectiveScore?.toFixed(3)}</span>`;
+        `&nbsp;&nbsp;score <span style="color:#00ffa0;">${Math.round(Math.min(sel.apy/8,1)*40 + (1-Math.min(sel.depeg/1.0,1))*35 + (1-Math.min(sel.util/95,1))*25)}</span><span style="color:var(--m-muted);font-size:10px;"> / 100</span>`;
     }
     const stableWrap = document.getElementById('stable-table-wrap');
     if (stableWrap) {
@@ -537,7 +557,7 @@ async function loadRwaRisk() {
               <th style="padding:8px 12px;text-align:right;font-weight:400;">APY</th>
               <th style="padding:8px 12px;text-align:right;font-weight:400;">Util</th>
               <th style="padding:8px 12px;text-align:right;font-weight:400;">Depeg</th>
-              <th style="padding:8px 12px;text-align:right;font-weight:400;">Score</th>
+              <th style="padding:8px 12px;text-align:right;font-weight:400;">Score / 100</th>
             </tr>
           </thead>
           <tbody>
@@ -547,7 +567,17 @@ async function loadRwaRisk() {
               <td style="padding:7px 12px;text-align:right;color:#00c97a;font-family:monospace;">${s.apy.toFixed(2)}%</td>
               <td style="padding:7px 12px;text-align:right;color:${s.util>90?'#ff5050':s.util>70?'#ffc800':'#00ffa0'};font-family:monospace;">${s.util.toFixed(1)}%</td>
               <td style="padding:7px 12px;text-align:right;color:${s.depeg>1?'#ff5050':s.depeg>0.3?'#ffc800':'#00ffa0'};font-family:monospace;">${s.depeg.toFixed(3)}%</td>
-              <td style="padding:7px 12px;text-align:right;color:${i===0?'#00ffa0':'var(--m-muted)'};font-family:monospace;font-weight:${i===0?'700':'400'}">${s.effectiveScore.toFixed(3)}</td>
+              <td style="padding:7px 12px;text-align:right;font-family:monospace;">
+                ${(() => {
+                  const apyS   = Math.min(s.apy  / 8,    1) * 40;
+                  const depegS = (1 - Math.min(s.depeg / 1.0,  1)) * 35;
+                  const utilS  = (1 - Math.min(s.util  / 95,   1)) * 25;
+                  const s100   = Math.round(apyS + depegS + utilS);
+                  const col    = s100 >= 75 ? '#00ffa0' : s100 >= 50 ? '#ffc800' : '#ff5050';
+                  const fw     = i === 0 ? '700' : '400';
+                  return `<span style="color:${col};font-weight:${fw}">${s100}</span>`;
+                })()}
+              </td>
             </tr>`).join('')}
           </tbody>
         </table>`;
@@ -557,38 +587,16 @@ async function loadRwaRisk() {
   }
 }
 
-function drawGauge(canvas, score) {
-  const ctx = canvas.getContext('2d');
-  const cx = 100, cy = 95, r = 75;
-  ctx.clearRect(0, 0, 200, 110);
-
-  // 背景弧
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, Math.PI, 2 * Math.PI);
-  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-  ctx.lineWidth = 14;
-  ctx.stroke();
-
-  // スコア弧
+function drawBar(score) {
   const pct   = Math.min(score / 100, 1);
-  const start = Math.PI;
-  const end   = Math.PI + pct * Math.PI;
   const color = score >= 70 ? '#ff5050' : score >= 50 ? '#ffc800' : '#00ffa0';
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, start, end);
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 14;
-  ctx.lineCap = 'round';
-  ctx.stroke();
-
-  // ゾーンラベル
-  ctx.font = '9px monospace';
-  ctx.fillStyle = '#00ffa0';
-  ctx.fillText('SAFE', 18, 98);
-  ctx.fillStyle = '#ffc800';
-  ctx.fillText('MID', 90, 30);
-  ctx.fillStyle = '#ff5050';
-  ctx.fillText('HIGH', 162, 98);
+  const fill  = document.getElementById('rwa-bar-fill');
+  const pctEl = document.getElementById('rwa-bar-pct');
+  if (!fill) return;
+  fill.style.width      = (pct * 100) + '%';
+  fill.style.background = color;
+  fill.style.opacity    = '0.85';
+  if (pctEl) pctEl.innerHTML = `<span style="color:${color}">${score}</span> / 100`;
 }
 
 let liqData = null;
