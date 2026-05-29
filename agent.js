@@ -554,8 +554,11 @@ async function fetchExitDepth() {
   const cmAmt500k = BigInt(Math.round(500000 / cmethPrice * 1e18)).toString();
   const meAmt100k = BigInt(Math.round(100000 / methPrice  * 1e18)).toString();
   const meAmt500k = BigInt(Math.round(500000 / methPrice  * 1e18)).toString();
-  const [cmETH_100k, cmETH_500k] = await Promise.all([odosImpact(process.env.CMETH, cmAmt100k), odosImpact(process.env.CMETH, cmAmt500k)]);
-  const [mETH_100k,  mETH_500k]  = await Promise.all([odosImpact(process.env.METH,  meAmt100k), odosImpact(process.env.METH,  meAmt500k)]);
+  const delay = ms => new Promise(r => setTimeout(r, ms));
+  const cmETH_100k = await odosImpact(process.env.CMETH, cmAmt100k); await delay(1200);
+  const cmETH_500k = await odosImpact(process.env.CMETH, cmAmt500k); await delay(1200);
+  const mETH_100k  = await odosImpact(process.env.METH,  meAmt100k); await delay(1200);
+  const mETH_500k  = await odosImpact(process.env.METH,  meAmt500k);
   let h = [];
   try { h = JSON.parse(fs.readFileSync(hFile, 'utf8')); } catch {}
   h.push({ ts: new Date().toISOString(), cmETH_100k, cmETH_500k, mETH_100k, mETH_500k });

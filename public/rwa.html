@@ -435,13 +435,16 @@ async function loadRwaRisk() {
     const badgeEl = document.getElementById('rwa-override-badge');
 
     // exitNorm/depegNorm/utilNormからfloatスコアを再計算
-    const _exitN  = 1 - Math.min((data.exitDepthTotal||0) / 200000, 1.0);
+    const _hasExit = data.exitDepthTotal !== null && data.exitDepthTotal !== undefined;
+    const _exitN  = _hasExit ? 1 - Math.min(data.exitDepthTotal / 200000, 1.0) : null;
     const _scores = data.stableScores || {};
     const _selSym = Object.entries(_scores).sort((a,b)=>b[1].effectiveScore-a[1].effectiveScore)[0]?.[0]||'USDC';
     const _sel    = _scores[_selSym] || {depeg:0, util:0};
     const _depegN = Math.min(_sel.depeg / 2.0, 1.0);
     const _utilN  = Math.min(_sel.util / 90.0, 1.0);
-    const floatScore = (_exitN*0.50 + _depegN*0.30 + _utilN*0.20) * 100;
+    const floatScore = _hasExit
+      ? (_exitN*0.50 + _depegN*0.30 + _utilN*0.20) * 100
+      : (_depegN*0.30 + _utilN*0.20) / 0.50 * 100;
     scoreEl.textContent = floatScore.toFixed(1);
     const color = data.score >= 70 ? '#ff5050' : data.score >= 50 ? '#ffc800' : '#00ffa0';
     scoreEl.style.color = color;
@@ -465,23 +468,21 @@ async function loadRwaRisk() {
     const scores = data.stableScores || {};
     const selectedSym = Object.entries(scores).sort((a,b) => b[1].effectiveScore - a[1].effectiveScore)[0]?.[0] || 'USDC';
     const sel = scores[selectedSym] || { depeg: 0, util: 0 };
-    const exitNorm  = Math.max(0, 1 - data.exitDepthTotal / 400000);
     const depegNorm = Math.min(sel.depeg / 2.0, 1.0);
     const utilNorm  = Math.min(sel.util / 90.0, 1.0);
-    const exitColor = data.exitDepthTotal < data.exitDepthThreshold ? '#ff5050' : '#00ffa0';
-    const level = data.score >= 70 ? 'HIGH RISK' : data.score >= 50 ? 'ELEVATED' : 'NORMAL';
+    const exitColor = !_hasExit ? '#888888' : data.exitDepthTotal < data.exitDepthThreshold ? '#ff5050' : '#00ffa0';
     labelEl.textContent = floatScore >= 70 ? 'HIGH RISK' : floatScore >= 50 ? 'ELEVATED' : '';
-    const exitNormDisplay = 1 - Math.min(data.exitDepthTotal / 200000, 1.0);
-    const exitScore  = exitNormDisplay * 50;
+    const exitNormDisplay = _hasExit ? 1 - Math.min(data.exitDepthTotal / 200000, 1.0) : null;
+    const exitScore  = _hasExit ? exitNormDisplay * 50 : null;
     const depegScore = depegNorm * 30;
     const utilScore  = utilNorm * 20;
     const depegColor = depegNorm > 0.5 ? '#ff5050' : depegNorm > 0.2 ? '#ffc800' : '#00ffa0';
     const utilColor  = utilNorm  > 0.9 ? '#ff5050' : utilNorm  > 0.7 ? '#ffc800' : '#00ffa0';
 
     const mExit = document.getElementById('rwa-m-exit');
-    if (mExit) { mExit.textContent = exitScore.toFixed(1); mExit.style.color = exitColor; }
+    if (mExit) { mExit.textContent = _hasExit ? exitScore.toFixed(1) : '—'; mExit.style.color = exitColor; }
     const mExitSub = document.getElementById('rwa-m-exit-sub');
-    if (mExitSub) mExitSub.innerHTML = `exitNorm = <span style="color:${exitColor}">${exitNormDisplay.toFixed(3)}</span>`;
+    if (mExitSub) mExitSub.innerHTML = _hasExit ? `exitNorm = <span style="color:${exitColor}">${exitNormDisplay.toFixed(3)}</span>` : '<span style="color:#888">no data</span>';
 
     const mDepeg = document.getElementById('rwa-m-depeg');
     if (mDepeg) { mDepeg.textContent = depegScore.toFixed(1); mDepeg.style.color = depegColor; }
@@ -497,7 +498,7 @@ async function loadRwaRisk() {
     if (fEq) fEq.innerHTML =
       `score = exitDepth(<span class="eq-label">50%</span>) + ${selectedSym} depeg(<span class="eq-label">30%</span>) + ${selectedSym} util(<span class="eq-label">20%</span>)<br>` +
       `<span class="eq-label">&nbsp;=&nbsp;</span>` +
-      `<span style="color:${exitColor};font-size:15px;">${exitScore.toFixed(1)}</span>` +
+      `<span style="color:${exitColor};font-size:15px;">${_hasExit ? exitScore.toFixed(1) : '—'}</span>` +
       `<span class="eq-label"> + </span><span style="color:${depegColor};font-size:15px;">${depegScore.toFixed(1)}</span>` +
       `<span class="eq-label"> + </span><span style="color:${utilColor};font-size:15px;">${utilScore.toFixed(1)}</span>` +
       `<span class="eq-label"> = </span><span style="color:${exitColor};font-size:20px;font-weight:700;">${floatScore.toFixed(1)}</span>`;
@@ -527,11 +528,13 @@ async function loadRwaRisk() {
         ? `monitoring <span style="color:#00ffa0;font-weight:700;">${monitored}</span> (current regime: ${regime.replace('_',' ')})`
         : `<span style="color:var(--m-muted);">LST not held — exit depth override inactive (${regime.replace('_',' ')})</span>`;
 
-      const exitNormEd = 1 - Math.min(data.exitDepthTotal / 200000, 1.0);
+      const exitNormEd = _hasExit ? 1 - Math.min(data.exitDepthTotal / 200000, 1.0) : null;
       edSummary.innerHTML =
         `${modeLabel}<br>` +
         `$100K swap impact &nbsp;<span style="color:${edColor};font-size:14px;">${impactVal}</span> &nbsp;/ threshold −2%<br>` +
-        `exitNorm = 1 − min(exitDepth / $200K, 1.0) = <span style="color:${edColor}">${exitNormEd.toFixed(3)}</span> &nbsp;→ exit depth score = <span style="color:${edColor}">${(exitNormEd*50).toFixed(1)}</span> / 50` +
+        (_hasExit
+          ? `exitNorm = 1 − min(exitDepth / $200K, 1.0) = <span style="color:${edColor}">${exitNormEd.toFixed(3)}</span> &nbsp;→ exit depth score = <span style="color:${edColor}">${(exitNormEd*50).toFixed(1)}</span> / 50`
+          : `<span style="color:#888">exit depth: awaiting first fetch (runs at top of hour)</span>`) +
         reentryLine;
     }
 
