@@ -620,10 +620,10 @@ async function fetchRwaRisk(regimeType = 'risk_on') {
   let reentryWarning = false;
   if (regimeType === 'risk_on') {
     monitoredToken = 'cmETH';
-    exitDepthTotal = cmOk ? 200000 : 0;
+    exitDepthTotal = cmETH_100k === null ? null : (cmOk ? 200000 : 0);
   } else if (regimeType === 'neutral') {
     monitoredToken = 'mETH';
-    exitDepthTotal = meOk ? 200000 : 0;
+    exitDepthTotal = mETH_100k === null ? null : (meOk ? 200000 : 0);
   } else {
     monitoredToken = null;
     exitDepthTotal = EXIT_DEPTH_THRESHOLD * 2;
@@ -723,7 +723,7 @@ async function executeRebalance(regime, { force = false } = {}) {
     if (rwaRisk.override === 'risk_off' && regimeType !== 'risk_off') {
       await notify(
         `🛡️ **RWA Override → RISK_OFF**\n` +
-        `Score: ${rwaRisk.score}/100 | ExitDepth: $${rwaRisk.exitDepthTotal.toLocaleString()} (threshold: $${rwaRisk.exitDepthThreshold.toLocaleString()})\n` +
+        `Score: ${rwaRisk.score}/100 | ExitDepth: ${rwaRisk.exitDepthTotal !== null ? "$" + rwaRisk.exitDepthTotal.toLocaleString() : "N/A"} (threshold: ${rwaRisk.exitDepthThreshold.toLocaleString()})\n` +
         `MaxDepeg: ${rwaRisk.maxDepeg}% | AvgUtil: ${rwaRisk.avgUtilization}%\n` +
         `Original regime: ${regimeType.toUpperCase()} → forced RISK_OFF`
       );
@@ -914,6 +914,12 @@ async function run() {
       const regimeChanged   = lastRegime !== null && lastRegime !== regime.regime;
       const shouldRebalance = regime.rebalance || regimeChanged;
 
+      // RWAリスクを毎ループ更新（rebalance有無に関わらず）
+      try {
+        await fetchRwaRisk(regime.regime);
+      } catch (e) {
+        console.warn('[rwa] background update failed:', e.message);
+      }
       if (!shouldRebalance) {
         await notify(`⏸️ **Hold** — regime=${regime.regime.toUpperCase()} confidence=${regime.confidence} (no change)`);
       } else {
