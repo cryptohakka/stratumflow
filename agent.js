@@ -531,6 +531,38 @@ const COINGECKO_IDS = {
 const ETH_CG_ID = 'ethereum';
 const EXIT_DEPTH_THRESHOLD = 200000;
 
+
+async function fetchExitDepth() {
+  const hFile = './data/liquidity_history.json';
+  async function odosImpact(tokenAddress, amount) {
+    const r = await axios.post('https://enterprise-api.odos.xyz/sor/quote/v3', {
+      chainId: 5000,
+      inputTokens: [{ tokenAddress, amount }],
+      outputTokens: [{ tokenAddress: process.env.USDC, proportion: 1 }],
+      userAddr: process.env.WALLET,
+      slippageLimitPercent: 50,
+    }, { headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ODOS_API_KEY }, timeout: 12000 });
+    return r.data.priceImpact ?? null;
+  }
+  const llamaRes = await axios.get(
+    `https://coins.llama.fi/prices/current/mantle:${process.env.CMETH},mantle:${process.env.METH}`,
+    { timeout: 8000 }
+  );
+  const cmethPrice = llamaRes.data.coins[`mantle:${process.env.CMETH}`]?.price ?? 2200;
+  const methPrice  = llamaRes.data.coins[`mantle:${process.env.METH}`]?.price  ?? 2200;
+  const cmAmt100k = BigInt(Math.round(100000 / cmethPrice * 1e18)).toString();
+  const cmAmt500k = BigInt(Math.round(500000 / cmethPrice * 1e18)).toString();
+  const meAmt100k = BigInt(Math.round(100000 / methPrice  * 1e18)).toString();
+  const meAmt500k = BigInt(Math.round(500000 / methPrice  * 1e18)).toString();
+  const [cmETH_100k, cmETH_500k] = await Promise.all([odosImpact(process.env.CMETH, cmAmt100k), odosImpact(process.env.CMETH, cmAmt500k)]);
+  const [mETH_100k,  mETH_500k]  = await Promise.all([odosImpact(process.env.METH,  meAmt100k), odosImpact(process.env.METH,  meAmt500k)]);
+  let h = [];
+  try { h = JSON.parse(fs.readFileSync(hFile, 'utf8')); } catch {}
+  h.push({ ts: new Date().toISOString(), cmETH_100k, cmETH_500k, mETH_100k, mETH_500k });
+  if (h.length > 96) h = h.slice(-96);
+  fs.writeFileSync(hFile, JSON.stringify(h));
+  console.log(`[liquidity] fetched cmETH=${cmETH_100k?.toFixed(2)}% mETH=${mETH_100k?.toFixed(2)}%`);
+}
 async function fetchRwaRisk(regimeType = 'risk_on') {
   const provider = getProvider();
   const pool     = new ethers.Contract(AAVE_POOL, AAVE_POOL_ABI, provider);
@@ -574,47 +606,13 @@ async function fetchRwaRisk(regimeType = 'risk_on') {
   let exitDepthTotal = EXIT_DEPTH_THRESHOLD * 2;
   let cmETH_100k = null, cmETH_500k = null, mETH_100k = null, mETH_500k = null;
   try {
-    const hFile = './data/liquidity_history.json';
-    let h = [];
-    try { h = JSON.parse(fs.readFileSync(hFile, 'utf8')); } catch {}
+    const h = JSON.parse(fs.readFileSync('./data/liquidity_history.json', 'utf8'));
     const lastEntry = h.length > 0 ? h[h.length - 1] : null;
-    const age = lastEntry ? Date.now() - new Date(lastEntry.ts).getTime() : Infinity;
-    if (age < 60 * 60 * 1000) {
+    if (lastEntry) {
       cmETH_100k = lastEntry.cmETH_100k; cmETH_500k = lastEntry.cmETH_500k;
       mETH_100k  = lastEntry.mETH_100k;  mETH_500k  = lastEntry.mETH_500k;
-      console.log('[rwa] exit depth cache hit');
-    } else {
-    async function odosImpact(tokenAddress, amount) {
-      const r = await axios.post('https://enterprise-api.odos.xyz/sor/quote/v3', {
-        chainId: 5000,
-        inputTokens: [{ tokenAddress, amount }],
-        outputTokens: [{ tokenAddress: process.env.USDC, proportion: 1 }],
-        userAddr: process.env.WALLET,
-        slippageLimitPercent: 50,
-      }, { headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ODOS_API_KEY }, timeout: 12000 });
-      return r.data.priceImpact ?? null;
     }
-    const llamaRes = await axios.get(
-      `https://coins.llama.fi/prices/current/mantle:${process.env.CMETH},mantle:${process.env.METH}`,
-      { timeout: 8000 }
-    );
-    const cmethPrice = llamaRes.data.coins[`mantle:${process.env.CMETH}`]?.price ?? 2200;
-    const methPrice  = llamaRes.data.coins[`mantle:${process.env.METH}`]?.price  ?? 2200;
-    const cmAmt100k = BigInt(Math.round(100000 / cmethPrice * 1e18)).toString();
-    const cmAmt500k = BigInt(Math.round(500000 / cmethPrice * 1e18)).toString();
-    const meAmt100k = BigInt(Math.round(100000 / methPrice  * 1e18)).toString();
-    const meAmt500k = BigInt(Math.round(500000 / methPrice  * 1e18)).toString();
-    [cmETH_100k, cmETH_500k] = await Promise.all([odosImpact(process.env.CMETH, cmAmt100k), odosImpact(process.env.CMETH, cmAmt500k)]);
-    [mETH_100k,  mETH_500k]  = await Promise.all([odosImpact(process.env.METH,  meAmt100k), odosImpact(process.env.METH,  meAmt500k)]);
-    const hFile = './data/liquidity_history.json';
-    let h = [];
-    try { h = JSON.parse(fs.readFileSync(hFile, 'utf8')); } catch {}
-    h.push({ ts: new Date().toISOString(), cmETH_100k, cmETH_500k, mETH_100k, mETH_500k });
-    if (h.length > 96) h = h.slice(-96);
-    fs.writeFileSync(hFile, JSON.stringify(h));
-    console.log(`[rwa] exit depth fetched cmETH=${cmETH_100k?.toFixed(2)}% mETH=${mETH_100k?.toFixed(2)}%`);
-    } // end else
-  } catch (e) { console.warn('[rwa] exit depth:', e.message); }
+  } catch (e) { console.warn('[rwa] exit depth read:', e.message); }
 
   const cmOk = cmETH_100k !== null && cmETH_100k > -2;
   const meOk = mETH_100k  !== null && mETH_100k  > -2;
@@ -692,7 +690,7 @@ async function executeRebalance(regime, { force = false } = {}) {
   const targets    = ALLOCATIONS[regimeType];
 
   if (!targets) {
-    await notify(`⚠️ Unknown regime type: ${regimeType}`);
+  await notify(`⚠️ Unknown regime type: ${regimeType}`);
     return;
   }
 
@@ -876,7 +874,17 @@ async function executeRebalance(regime, { force = false } = {}) {
 }
 
 // ── Main loop ─────────────────────────────────────────────────────────────────
+async function liquidityLoop() {
+  // 初回即時実行
+  try { await fetchExitDepth(); } catch (e) { console.warn('[liquidity] init:', e.message); }
+  while (true) {
+    await new Promise(r => setTimeout(r, 60 * 60 * 1000));
+    try { await fetchExitDepth(); } catch (e) { console.warn('[liquidity] loop:', e.message); }
+  }
+}
+
 async function run() {
+  liquidityLoop().catch(e => console.error('[liquidity] fatal:', e.message));
   await notify(
     `🚀 **StratumFlow Agent Started**\n` +
     `Interval: ${INTERVAL_MS / 60000} min | Wallet: ${new ethers.Wallet(process.env.PRIVATE_KEY).address}\n` +
