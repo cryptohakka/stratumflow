@@ -4,6 +4,20 @@ const axios = require('axios');
 const { ethers } = require('ethers');
 const { detectRegime } = require('./regime');
 
+// ── RebalanceRecorder (on-chain audit trail) ──────────────────────────────────
+const RECORDER_ABI = [
+  'function recordRebalance(string regime, string fromAsset, string toAsset, uint256 amount, uint256 rwaScore) external',
+  'function recordRegimeChange(string oldRegime, string newRegime, uint256 confidence) external',
+];
+const RECORDER_ADDRESS = process.env.RECORDER_ADDRESS || '0x3d99E72229BF6DD14697751971C81D93529BeEff';
+function getRecorder() {
+  try {
+    const provider = new ethers.JsonRpcProvider(process.env.RPC_URL || 'https://rpc.mantle.xyz');
+    const wallet   = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+    return new ethers.Contract(RECORDER_ADDRESS, RECORDER_ABI, wallet);
+  } catch { return null; }
+}
+
 const POSITIONS_PATH = './positions.json';
 const INTERVAL_MS    = parseInt(process.env.REGIME_CHECK_INTERVAL) || 15 * 60 * 1000;
 
@@ -930,6 +944,25 @@ async function executeRebalance(regime, { force = false } = {}) {
 
   savePositions({ regime: finalRegimeType, targets: resolvedTargets, updatedAt: new Date().toISOString() });
   await notify(`✅ **Rebalance complete** — Portfolio aligned to ${finalRegimeType.toUpperCase()}${regime.rwaOverride ? ` (RWA Override, score=${regime.rwaScore})` : ``}`);
+
+  // ── On-chain audit trail ──────────────────────────────────────────────────
+  try {
+    const recorder  = getRecorder();
+    const fromAsset = resolvedTargets?.[0]?.token || 'UNKNOWN';
+    const toAsset   = finalRegimeType === 'risk_on' ? 'CMETH' : finalRegimeType === 'neutral' ? 'METH' : 'USDC';
+    const rwaScore  = Math.round((rwaRisk?.score || 0) * 100);
+    const tx = await recorder.recordRebalance(
+      finalRegimeType,
+      fromAsset,
+      toAsset,
+      0,
+      rwaScore
+    );
+    await tx.wait();
+    await notify(`🔗 **On-chain recorded** — [tx](https://explorer.mantle.xyz/tx/${tx.hash})`);
+  } catch (e) {
+    console.warn('[recorder] recordRebalance failed:', e.message?.slice(0, 80));
+  }
 }
 
 // ── Main loop ─────────────────────────────────────────────────────────────────
