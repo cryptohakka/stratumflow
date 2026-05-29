@@ -6,3 +6,5 @@ regime.json
 snapshots_phase.json
 *.db
 *.sqlite
+data/
+positions.json
