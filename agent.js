@@ -782,7 +782,8 @@ async function executeRebalance(regime, { force = false } = {}) {
     if (h.amount < 0.0001) continue;
     const sym = h.symbol.replace(/^a/, '');
     if (targetAaveSymbols.has(sym)) {
-      console.log(`[rebalance] withdrawing ${h.symbol} for reallocation`);
+      console.log(`[rebalance] skipping withdraw ${h.symbol} — already target`);
+      continue;
     }
     try {
       await notify(`🏦 Withdrawing ${h.amount.toFixed(6)} ${h.symbol} from Aave`);
