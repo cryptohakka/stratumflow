@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StratumFlow — RWA</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --m-bg: #0a1a12;
+  --m-surface: #0f2318;
+  --m-surface2: #152d1e;
+  --m-border: rgba(0,255,160,0.12);
+  --m-border2: rgba(0,255,160,0.25);
+  --m-green: #00c97a;
+  --m-green-dim: rgba(0,201,122,0.15);
+  --m-cyan: #00e5c8;
+  --m-yellow: #f0c94a;
+  --m-red: #f05a5a;
+  --m-orange: #f09050;
+  --m-text: #d4f0e4;
+  --m-muted: #6b9980;
+  --m-label: #4a7a60;
+}
+html, body { background: var(--m-bg); color: var(--m-text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+.wrap { padding: 1.5rem 1rem; max-width: 1100px; margin: 0 auto; }
+
+.header { display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem; }
+.logo { width: 28px; height: 28px; flex-shrink: 0; }
+.header h1 { font-size: 18px; font-weight: 500; color: var(--m-green); letter-spacing: 0.04em; }
+.tab-nav { display: flex; gap: 4px; margin-left: 20px; }
+.tab-link { font-size: 11px; padding: 4px 12px; border-radius: 4px; color: var(--m-muted); text-decoration: none; letter-spacing: 0.06em; text-transform: uppercase; transition: all 0.2s; }
+.tab-link:hover { color: var(--m-green); }
+.tab-link.active { background: var(--m-green-dim); color: var(--m-green); }
+.header-right { margin-left: auto; font-size: 11px; color: var(--m-muted); }
+
+.card { background: var(--m-surface); border: 1px solid var(--m-border); border-radius: 10px; padding: 16px; }
+.card-title { font-size: 11px; color: var(--m-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 16px; }
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.grid1 { margin-bottom: 16px; }
+
+.depth-token { margin-bottom: 20px; }
+.depth-token:last-child { margin-bottom: 0; }
+.depth-label { font-size: 12px; color: var(--m-cyan); font-weight: 500; margin-bottom: 10px; letter-spacing: 0.04em; }
+.depth-row { display: grid; grid-template-columns: 52px 1fr 60px; align-items: center; gap: 8px; margin-bottom: 6px; }
+.depth-size { font-size: 10px; color: var(--m-muted); }
+.depth-bar-wrap { height: 6px; background: var(--m-surface2); border-radius: 3px; overflow: hidden; }
+.depth-bar { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+.depth-bar.low    { background: var(--m-green); }
+.depth-bar.medium { background: var(--m-yellow); }
+.depth-bar.high   { background: var(--m-orange); }
+.depth-bar.severe { background: var(--m-red); }
+.depth-impact { font-size: 10px; text-align: right; font-variant-numeric: tabular-nums; }
+.depth-impact.low    { color: var(--m-green); }
+.depth-impact.medium { color: var(--m-yellow); }
+.depth-impact.high   { color: var(--m-orange); }
+.depth-impact.severe { color: var(--m-red); }
+
+.risk-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.risk-item { background: var(--m-surface2); border-radius: 8px; padding: 12px; text-align: center; }
+.risk-item-label { font-size: 9px; color: var(--m-label); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+.risk-item-val { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.risk-item-sub { font-size: 9px; color: var(--m-muted); margin-top: 2px; }
+
+.alert { border-radius: 8px; padding: 10px 14px; font-size: 12px; margin-bottom: 16px; display: none; }
+.alert.warn { background: rgba(240,200,74,0.12); border: 1px solid rgba(240,200,74,0.3); color: var(--m-yellow); }
+.alert.danger { background: rgba(240,90,90,0.12); border: 1px solid rgba(240,90,90,0.3); color: var(--m-red); }
+
+.context-box { background: var(--m-surface2); border-radius: 8px; padding: 14px; font-size: 12px; color: var(--m-muted); line-height: 1.7; }
+.context-box strong { color: var(--m-text); }
+
+.updated { font-size: 10px; color: var(--m-label); text-align: right; margin-top: 10px; }
+.loading { text-align: center; padding: 60px 0; color: var(--m-muted); font-size: 13px; }
+
+/* ── RWA Risk Score ── */
+.rwa-score-card { border-color: var(--m-accent); }
+.rwa-score-wrap { display: flex; align-items: center; gap: 24px; margin-bottom: 20px; }
+.rwa-score-left { flex: 1; }
+.rwa-score-num  { font-size: 56px; font-weight: 700; line-height: 1; color: var(--m-accent); font-family: monospace; }
+.rwa-score-label { font-size: 13px; color: var(--m-muted); margin-top: 6px; }
+.rwa-override-badge { margin-top: 10px; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; display: inline-block; }
+.rwa-override-badge.risk_off  { background: rgba(255,80,80,0.15); color: #ff5050; border: 1px solid #ff5050; }
+.rwa-override-badge.neutral_cap { background: rgba(255,200,0,0.15); color: #ffc800; border: 1px solid #ffc800; }
+.rwa-score-right { flex: 0 0 200px; }
+.rwa-gauge-wrap  { position: relative; }
+.rwa-detail-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px; }
+.rwa-detail-item { background: rgba(0,255,160,0.04); border: 1px solid var(--m-border); border-radius: 6px; padding: 10px 12px; }
+.rwa-detail-label { font-size: 10px; color: var(--m-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+.rwa-detail-val   { font-size: 18px; font-weight: 600; color: var(--m-text); font-family: monospace; }
+.rwa-detail-sub   { font-size: 10px; color: var(--m-muted); margin-top: 2px; }
+.rwa-rule-box     { border-top: 1px solid var(--m-border); padding-top: 14px; }
+.rwa-rule-title   { font-size: 10px; color: var(--m-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+.rwa-rule-row     { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; font-size: 12px; }
+.rwa-rule-pill    { padding: 2px 8px; border-radius: 3px; font-size: 11px; }
+.rwa-rule-pill.red    { background: rgba(255,80,80,0.12); color: #ff5050; }
+.rwa-rule-pill.yellow { background: rgba(255,200,0,0.12); color: #ffc800; }
+.rwa-rule-pill.green  { background: rgba(0,255,160,0.12); color: #00ffa0; }
+.rwa-rule-arrow   { color: var(--m-muted); }
+.rwa-rule-result  { color: var(--m-text); }
+
+.backing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 16px; }
+.backing-col { background: rgba(0,255,160,0.03); border: 1px solid rgba(0,255,160,0.08); border-radius: 8px; padding: 14px; }
+.backing-token { font-size: 18px; font-weight: 700; color: var(--m-accent); font-family: monospace; margin-bottom: 10px; }
+.backing-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 12px; }
+.backing-label { color: var(--m-muted); }
+.backing-val { color: var(--m-text); text-align: right; }
+.backing-safe { color: var(--m-accent); }
+.backing-warning { font-size: 11px; color: #f09050; background: rgba(240,144,80,0.08); border: 1px solid rgba(240,144,80,0.2); border-radius: 6px; padding: 10px 12px; margin-top: 4px; }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <svg class="logo" viewBox="0 0 28 28" fill="none">
+      <circle cx="14" cy="14" r="13" stroke="#00c97a" stroke-width="1.5"/>
+      <path d="M8 14 L14 8 L20 14 L14 20 Z" stroke="#00c97a" stroke-width="1.5" fill="rgba(0,201,122,0.1)"/>
+      <circle cx="14" cy="14" r="2.5" fill="#00c97a"/>
+    </svg>
+    <h1>StratumFlow</h1>
+    <nav class="tab-nav">
+      <a href="/" class="tab-link">Portfolio</a>
+      <a href="/rwa" class="tab-link active">RWA</a>
+    </nav>
+    <div class="header-right" id="updated-header">—</div>
+  </div>
+
+  <div id="alert-banner" class="alert"></div>
+
+  <div id="loading" class="loading">fetching liquidity data…</div>
+  <div id="main" style="display:none">
+
+
+    <!-- RWA Risk Score Panel -->
+    <div class="grid1" id="rwa-risk-section" style="display:none">
+      <div class="card rwa-score-card">
+        <div class="card-title">RWA risk score — regime override engine</div>
+        <div class="rwa-score-wrap">
+          <div class="rwa-score-left">
+            <div class="rwa-score-num" id="rwa-score-num">—</div>
+            <div class="rwa-score-label" id="rwa-score-label">—</div>
+            <div class="rwa-override-badge" id="rwa-override-badge" style="display:none"></div>
+          </div>
+          <div class="rwa-score-right">
+            <div class="rwa-gauge-wrap">
+              <canvas id="rwa-gauge" width="200" height="110"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="rwa-detail-grid" id="rwa-detail-grid"></div>
+        <div class="rwa-rule-box">
+          <div class="rwa-rule-title">Override Rules</div>
+          <div class="rwa-rule-row"><span class="rwa-rule-pill red">score ≥ 70 or exit depth &lt; $200K</span><span class="rwa-rule-arrow">→</span><span class="rwa-rule-result">Force RISK_OFF</span></div>
+          <div class="rwa-rule-row"><span class="rwa-rule-pill yellow">score 50–69</span><span class="rwa-rule-arrow">→</span><span class="rwa-rule-result">Cap at NEUTRAL (block RISK_ON)</span></div>
+          <div class="rwa-rule-row"><span class="rwa-rule-pill green">score &lt; 50</span><span class="rwa-rule-arrow">→</span><span class="rwa-rule-result">No override — BTC regime applies</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title">cmETH exit depth</div>
+        <div class="depth-token" id="depth-cmETH"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">mETH exit depth</div>
+        <div class="depth-token" id="depth-mETH"></div>
+      </div>
+    </div>
+
+
+    <!-- backing asset summary -->
+    <div class="grid1">
+      <div class="card">
+        <div class="card-title">backing asset summary</div>
+        <div class="backing-grid">
+          <div class="backing-col">
+            <div class="backing-token">mETH</div>
+            <div class="backing-row"><span class="backing-label">issuer</span><span class="backing-val">Mantle / Bybit</span></div>
+            <div class="backing-row"><span class="backing-label">backing</span><span class="backing-val">ETH (Ethereum L1)</span></div>
+            <div class="backing-row"><span class="backing-label">TVL</span><span class="backing-val" id="meth-tvl">—</span></div>
+            <div class="backing-row"><span class="backing-label">withdrawal</span><span class="backing-val">~24h (buffer pool)</span></div>
+            <div class="backing-row"><span class="backing-label">risk</span><span class="backing-val">ETH staking only</span></div>
+          </div>
+          <div class="backing-col">
+            <div class="backing-token">cmETH</div>
+            <div class="backing-row"><span class="backing-label">backing</span><span class="backing-val">mETH × restaking</span></div>
+            <div class="backing-row"><span class="backing-label">AVS</span><span class="backing-val">EigenLayer, Symbiotic, Karak</span></div>
+            <div class="backing-row"><span class="backing-label">ratio</span><span class="backing-val">1:1 mETH</span></div>
+            <div class="backing-row"><span class="backing-label">withdrawal</span><span class="backing-val">delayed (cmETH→mETH)</span></div>
+            <div class="backing-row"><span class="backing-label">slash record</span><span class="backing-val backing-safe">0 incidents</span></div>
+          </div>
+        </div>
+        <div class="backing-warning">⚠ Emergency exit: DEX only — cmETH→mETH→ETH redemption is delayed. StratumFlow monitors DEX depth as the sole real-time liquidity indicator.</div>
+      </div>
+    </div>
+    <!-- 24h charts -->
+    <div class="grid2" id="charts-section" style="display:none">
+      <div class="card">
+        <div class="card-title">cmETH exit depth — 24h</div>
+        <canvas id="chart-cmeth" height="120"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title">mETH exit depth — 24h</div>
+        <canvas id="chart-meth" height="120"></canvas>
+      </div>
+    </div>
+
+    <div class="grid1">
+      <div class="card">
+        <div class="card-title">risk context</div>
+        <div class="context-box">
+<strong>Bybit Hack (Feb 21, 2025) — A Real Stress Test:</strong> The Lazarus Group stole 15,000 cmETH and 8,000 mETH from Bybit's cold wallet. The 8,000 mETH were immediately swapped to ETH via DEX across 3 transactions — DEX liquidity was sufficient and the exit completed. The 15,000 cmETH conversion was left <strong>incomplete due to on-chain liquidity constraints</strong>. The 8-hour redemption delay built into mETH Protocol gave the team time to pause the contract and recover all 15,000 cmETH (~$43M).<br><br>
+          <strong>Key insight:</strong> Direct redemption (cmETH → mETH → ETH) is not an emergency exit — it is a delayed mechanism. DEX exit depth is the only real-time liquidity indicator during stress events. A $500K cmETH position on Mantle currently incurs <span id="ctx-500k">—</span> price impact to exit via USDC. StratumFlow monitors this depth continuously and biases toward risk-off allocation when $100K-tier impact exceeds <strong>3%</strong>.
+        </div>
+        <div class="updated" id="updated-footer">—</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function impactClass(pct) {
+  if (pct < 0.5) return 'low';
+  if (pct < 2)   return 'medium';
+  if (pct < 5)   return 'high';
+  return 'severe';
+}
+
+function barWidth(pct) {
+  return Math.min(100, (Math.log10(pct + 0.1) + 1) * 45);
+}
+
+function renderDepth(containerId, rows) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = rows.map(r => {
+    const cls = impactClass(r.impact);
+    const w = barWidth(r.impact);
+    return `
+      <div class="depth-row">
+        <span class="depth-size">${r.label}</span>
+        <div class="depth-bar-wrap"><div class="depth-bar ${cls}" style="width:${w}%"></div></div>
+        <span class="depth-impact ${cls}">${r.impact.toFixed(2)}%</span>
+      </div>`;
+  }).join('');
+}
+
+function renderRiskGrid(data) {
+  const tokens = ['cmETH', 'mETH'];
+  const sizes  = ['$10K', '$100K'];
+  const items  = [];
+  for (const tok of tokens) {
+    for (const sz of sizes) {
+      const row = data[tok].find(r => r.label === sz);
+      if (!row) continue;
+      const cls = impactClass(row.impact);
+      items.push(`
+        <div class="risk-item">
+          <div class="risk-item-label">${tok} @ ${sz}</div>
+          <div class="risk-item-val depth-impact ${cls}">${row.impact.toFixed(2)}%</div>
+          <div class="risk-item-sub">price impact</div>
+        </div>`);
+    }
+  }
+  const rg = document.getElementById('risk-grid'); if (rg) rg.innerHTML = items.join('');
+}
+
+function checkAlert(data) {
+  const banner = document.getElementById('alert-banner');
+  const cmeth100 = data.cmETH.find(r => r.label === '$100K')?.impact ?? 0;
+  const meth100  = data.mETH.find(r =>  r.label === '$100K')?.impact ?? 0;
+  const max100 = Math.max(cmeth100, meth100);
+  if (max100 >= 5) {
+    banner.className = 'alert danger';
+    banner.textContent = `⚠ CRITICAL: Exit liquidity severely constrained — $100K trade incurs ${max100.toFixed(1)}% impact. Risk-off rebalancing recommended.`;
+    banner.style.display = 'block';
+  } else if (max100 >= 2) {
+    banner.className = 'alert warn';
+    banner.textContent = `⚡ Elevated liquidity risk detected — $100K exit at ${max100.toFixed(1)}% impact. Monitor closely.`;
+    banner.style.display = 'block';
+  }
+}
+
+
+async function loadCharts() {
+  try {
+    const res = await fetch('/api/liquidity/history');
+    const history = await res.json();
+    if (history.length < 2) return;
+
+    document.getElementById('charts-section').style.display = 'grid';
+
+    const labels = history.map(h => {
+      const d = new Date(h.ts);
+      return d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
+    });
+
+    const chartOpts = (label100, label500, data100, data500) => ({
+      data: {
+        labels,
+        datasets: [
+          {
+            label: '$100K impact',
+            data: data100,
+            borderColor: '#00c97a',
+            backgroundColor: 'rgba(0,201,122,0.08)',
+            borderWidth: 1.5,
+            pointRadius: 2,
+            tension: 0.3,
+            spanGaps: true,
+          },
+          {
+            label: '$500K impact',
+            data: data500,
+            borderColor: '#f09050',
+            backgroundColor: 'rgba(240,144,80,0.08)',
+            borderWidth: 1.5,
+            pointRadius: 2,
+            tension: 0.3,
+            spanGaps: true,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { labels: { color: '#6b9980', font: { size: 10 } } },
+          tooltip: { callbacks: { label: ctx => ctx.parsed.y.toFixed(2) + '%' } },
+        },
+        scales: {
+          x: { ticks: { color: '#4a7a60', font: { size: 9 } }, grid: { color: 'rgba(0,255,160,0.05)' } },
+          y: {
+            ticks: { color: '#4a7a60', font: { size: 9 }, callback: v => v.toFixed(1) + '%' },
+            grid: { color: 'rgba(0,255,160,0.05)' },
+            min: 0,
+          },
+        },
+      },
+      type: 'line',
+    });
+
+    new Chart(document.getElementById('chart-cmeth'), chartOpts(
+      '$100K', '$500K',
+      history.map(h => h.cmETH_100k),
+      history.map(h => h.cmETH_500k),
+    ));
+
+    new Chart(document.getElementById('chart-meth'), chartOpts(
+      '$100K', '$500K',
+      history.map(h => h.mETH_100k),
+      history.map(h => h.mETH_500k),
+    ));
+  } catch(e) {
+    console.error('chart load failed:', e);
+  }
+}
+
+
+// ── RWA Risk Score ────────────────────────────────────────────────────────────
+async function loadRwaRisk() {
+  try {
+    const data = await fetch('/api/rwa-risk').then(r => r.json());
+    if (!data || data.error) return;
+
+    document.getElementById('rwa-risk-section').style.display = '';
+
+    // スコア表示
+    // mETH TVL
+    if (data.methTvl) {
+      const tvlEl = document.getElementById('meth-tvl');
+      if (tvlEl) tvlEl.textContent = '$' + (data.methTvl / 1e6).toFixed(0) + 'M';
+    }
+    const scoreEl = document.getElementById('rwa-score-num');
+    const labelEl = document.getElementById('rwa-score-label');
+    const badgeEl = document.getElementById('rwa-override-badge');
+
+    scoreEl.textContent = data.score;
+    const color = data.score >= 70 ? '#ff5050' : data.score >= 50 ? '#ffc800' : '#00ffa0';
+    scoreEl.style.color = color;
+
+    const levelText = data.score >= 70 ? 'HIGH RISK' : data.score >= 50 ? 'ELEVATED' : 'NORMAL';
+    labelEl.textContent = levelText;
+
+    if (data.override) {
+      badgeEl.style.display = 'inline-block';
+      badgeEl.className = 'rwa-override-badge ' + data.override;
+      badgeEl.textContent = data.override === 'risk_off'
+        ? '⚠ OVERRIDE: FORCE RISK_OFF'
+        : '⚠ OVERRIDE: CAP AT NEUTRAL';
+    }
+
+    // ゲージ描画
+    drawGauge(document.getElementById('rwa-gauge'), data.score);
+
+    // 詳細グリッド
+    // スコア内訳をlabel下に表示
+    const labelEl2 = document.getElementById('rwa-score-label');
+    const exitColor = data.exitDepthTotal < data.exitDepthThreshold ? '#ff5050' : '#00ffa0';
+    const scores = data.stableScores || {};
+    const selectedSym = Object.entries(scores).sort((a,b) => b[1].effectiveScore - a[1].effectiveScore)[0]?.[0] || 'USDC';
+    const sel = scores[selectedSym] || { depeg: 0, util: 0 };
+    const exitNorm  = Math.max(0, 1 - data.exitDepthTotal / 400000);
+    const depegNorm = Math.min(sel.depeg / 2.0, 1.0);
+    const utilNorm  = Math.min(sel.util / 90.0, 1.0);
+    const level = data.score >= 70 ? 'HIGH RISK' : data.score >= 50 ? 'ELEVATED' : 'NORMAL';
+    labelEl2.innerHTML = `${level} <span style="font-size:11px;color:${exitColor};margin-left:12px;">exit $${(data.exitDepthTotal/1000).toFixed(0)}K</span>
+      <div style="font-size:10px;color:var(--m-muted);margin-top:6px;font-family:monospace;">
+        score = exitDepth(50%) + ${selectedSym} depeg(30%) + ${selectedSym} util(20%)<br>
+        = ${(exitNorm*50).toFixed(1)} + ${(depegNorm*30).toFixed(1)} + ${(utilNorm*20).toFixed(1)} = ${data.score}
+      </div>`;
+
+    // Aave stable専用グリッド
+    const detailGrid = document.getElementById('rwa-detail-grid');
+    const depegEntries = Object.entries(data.depegByToken || {});
+    const maxDepegEntry = depegEntries.sort((a,b) => b[1]-a[1])[0] || ['—', 0];
+    detailGrid.innerHTML = `
+
+      <div class="rwa-detail-item" style="grid-column:span 3; padding:0;">
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead>
+            <tr style="color:var(--m-muted);font-size:10px;text-transform:uppercase;letter-spacing:0.06em;">
+              <th style="padding:8px 12px;text-align:left;font-weight:400;">Token</th>
+              <th style="padding:8px 12px;text-align:right;font-weight:400;">APY</th>
+              <th style="padding:8px 12px;text-align:right;font-weight:400;">Util</th>
+              <th style="padding:8px 12px;text-align:right;font-weight:400;">Depeg</th>
+              <th style="padding:8px 12px;text-align:right;font-weight:400;">Score</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${Object.entries(data.stableScores||{}).sort((a,b)=>b[1].effectiveScore-a[1].effectiveScore).map(([sym, s], i) => `
+            <tr style="border-top:1px solid var(--m-border);${i===0?'background:rgba(0,255,160,0.04)':''}">
+              <td style="padding:7px 12px;color:${i===0?'#00ffa0':'var(--m-text)'};font-family:monospace;font-weight:${i===0?'700':'400'}">${sym}${i===0?' ✓':''}</td>
+              <td style="padding:7px 12px;text-align:right;color:#00c97a;font-family:monospace;">${s.apy.toFixed(2)}%</td>
+              <td style="padding:7px 12px;text-align:right;color:${s.util>90?'#ff5050':s.util>70?'#ffc800':'#00ffa0'};font-family:monospace;">${s.util.toFixed(1)}%</td>
+              <td style="padding:7px 12px;text-align:right;color:${s.depeg>1?'#ff5050':s.depeg>0.3?'#ffc800':'#00ffa0'};font-family:monospace;">${s.depeg.toFixed(3)}%</td>
+              <td style="padding:7px 12px;text-align:right;color:${i===0?'#00ffa0':'var(--m-muted)'};font-family:monospace;font-weight:${i===0?'700':'400'}">${s.effectiveScore.toFixed(3)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } catch(e) {
+    console.error('rwa-risk load failed:', e);
+  }
+}
+
+function drawGauge(canvas, score) {
+  const ctx = canvas.getContext('2d');
+  const cx = 100, cy = 95, r = 75;
+  ctx.clearRect(0, 0, 200, 110);
+
+  // 背景弧
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, Math.PI, 2 * Math.PI);
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 14;
+  ctx.stroke();
+
+  // スコア弧
+  const pct   = Math.min(score / 100, 1);
+  const start = Math.PI;
+  const end   = Math.PI + pct * Math.PI;
+  const color = score >= 70 ? '#ff5050' : score >= 50 ? '#ffc800' : '#00ffa0';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, start, end);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 14;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  // ゾーンラベル
+  ctx.font = '9px monospace';
+  ctx.fillStyle = '#00ffa0';
+  ctx.fillText('SAFE', 18, 98);
+  ctx.fillStyle = '#ffc800';
+  ctx.fillText('MID', 90, 30);
+  ctx.fillStyle = '#ff5050';
+  ctx.fillText('HIGH', 162, 98);
+}
+
+async function load() {
+  try {
+    const res = await fetch('/api/liquidity');
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    renderDepth('depth-cmETH', data.cmETH);
+    renderDepth('depth-mETH',  data.mETH);
+    renderRiskGrid(data);
+    checkAlert(data);
+
+    const cmeth500 = data.cmETH.find(r => r.label === '$500K');
+    if (cmeth500) document.getElementById('ctx-500k').textContent = cmeth500.impact.toFixed(1) + '%';
+
+    const ts = new Date(data.updatedAt).toLocaleTimeString();
+    document.getElementById('updated-header').textContent = `updated ${ts}`;
+    document.getElementById('updated-footer').textContent = `data via Odos SOR · updated ${ts} · refreshes every 1h`;
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('main').style.display = 'block';
+  } catch(e) {
+    document.getElementById('loading').textContent = 'failed to load: ' + e.message;
+  }
+}
+
+load();
+loadCharts();
+loadRwaRisk();
+</script>
+</body>
+</html>

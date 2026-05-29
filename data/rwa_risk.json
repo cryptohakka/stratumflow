@@ -1,0 +1,56 @@
+{
+  "score": 14,
+  "override": null,
+  "exitDepthTotal": 400000,
+  "exitDepthThreshold": 200000,
+  "maxDepeg": 0.1448,
+  "depegByToken": {
+    "USDC": 0.0392,
+    "USDT0": 0.1448,
+    "USDE": 0.1141,
+    "GHO": 0.1271
+  },
+  "avgUtilization": 65.14,
+  "utilizationByToken": {
+    "USDT0": 56.02,
+    "USDC": 59.02,
+    "GHO": 67.77,
+    "USDE": 77.77
+  },
+  "stableScores": {
+    "USDT0": {
+      "apy": 5.537853238317188,
+      "base": 3.04,
+      "incentive": 2.4978532383171888,
+      "depeg": 0.1448,
+      "util": 56.02,
+      "effectiveScore": 3.2184470143323134
+    },
+    "USDC": {
+      "apy": 7.044444440453052,
+      "base": 2.38,
+      "incentive": 4.664444440453052,
+      "depeg": 0.0392,
+      "util": 59.02,
+      "effectiveScore": 4.188945636737649
+    },
+    "GHO": {
+      "apy": 6.225492708776831,
+      "base": 1.78,
+      "incentive": 4.445492708776831,
+      "depeg": 0.1271,
+      "util": 67.77,
+      "effectiveScore": 3.1959307031588935
+    },
+    "USDE": {
+      "apy": 2.4455897195342735,
+      "base": 0.51,
+      "incentive": 1.9355897195342735,
+      "depeg": 0.1141,
+      "util": 77.77,
+      "effectiveScore": 1.1104490086966448
+    }
+  },
+  "methTvl": 457010576,
+  "updatedAt": "2026-05-28T20:01:39.986Z"
+}

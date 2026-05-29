@@ -1,194 +1,194 @@
 [
   {
-    "mark_price": 75688,
-    "funding_rate": -0.0000127336,
-    "open_interest": 30677.09034,
-    "premium": -0.0005677992,
-    "atr_pct": 0.3309,
-    "ts": "2026-05-27T09:17:16.055Z"
-  },
-  {
-    "mark_price": 75783,
-    "funding_rate": -0.0000086917,
-    "open_interest": 30671.40764,
-    "premium": -0.0003916966,
-    "atr_pct": 0.3305,
-    "ts": "2026-05-27T09:32:22.613Z"
-  },
-  {
-    "mark_price": 75871,
-    "funding_rate": -0.0000062009,
-    "open_interest": 30486.71786,
-    "premium": -0.0005269398,
-    "atr_pct": 0.341,
-    "ts": "2026-05-27T09:47:29.593Z"
-  },
-  {
-    "mark_price": 75859,
-    "funding_rate": 0.0000075326,
-    "open_interest": 30353.20566,
-    "premium": -0.0005665573,
-    "atr_pct": 0.3256,
-    "ts": "2026-05-27T10:02:37.985Z"
-  },
-  {
-    "mark_price": 75965,
-    "funding_rate": 0.0000010597,
-    "open_interest": 30350.28222,
-    "premium": -0.000394742,
-    "atr_pct": 0.3336,
-    "ts": "2026-05-27T10:17:46.007Z"
-  },
-  {
-    "mark_price": 75960,
-    "funding_rate": 0.0000019109,
-    "open_interest": 30371.89664,
-    "premium": -0.000434222,
-    "atr_pct": 0.3364,
-    "ts": "2026-05-27T10:32:52.306Z"
-  },
-  {
-    "mark_price": 75856,
-    "funding_rate": 4.679e-7,
-    "open_interest": 30369.02498,
-    "premium": -0.000553367,
-    "atr_pct": 0.338,
-    "ts": "2026-05-27T10:48:00.357Z"
-  },
-  {
-    "mark_price": 75954,
-    "funding_rate": 8.21e-7,
-    "open_interest": 30370.1837,
-    "premium": -0.0004474332,
-    "atr_pct": 0.3222,
-    "ts": "2026-05-27T11:03:07.187Z"
-  },
-  {
-    "mark_price": 75946,
-    "funding_rate": 0.0000036058,
-    "open_interest": 30357.26472,
-    "premium": -0.0004869446,
-    "atr_pct": 0.3255,
-    "ts": "2026-05-27T11:18:13.500Z"
-  },
-  {
-    "mark_price": 75771,
-    "funding_rate": 0.0000034621,
-    "open_interest": 30366.6948,
-    "premium": -0.000514444,
-    "atr_pct": 0.3347,
-    "ts": "2026-05-27T11:33:20.804Z"
-  },
-  {
-    "mark_price": 75757,
-    "funding_rate": 0.0000024149,
-    "open_interest": 30335.8961,
-    "premium": -0.0005672973,
-    "atr_pct": 0.3369,
-    "ts": "2026-05-27T11:48:30.033Z"
-  },
-  {
-    "mark_price": 75704,
-    "funding_rate": -0.0000103975,
-    "open_interest": 30339.6824,
-    "premium": -0.0008185359,
-    "atr_pct": 0.3127,
-    "ts": "2026-05-27T12:03:36.789Z"
-  },
-  {
-    "mark_price": 75709,
-    "funding_rate": -0.0000100308,
-    "open_interest": 30241.43884,
-    "premium": -0.0002402609,
-    "atr_pct": 0.3275,
-    "ts": "2026-05-27T12:18:44.010Z"
-  },
-  {
-    "mark_price": 75853,
-    "funding_rate": -0.0000075849,
-    "open_interest": 30188.07828,
-    "premium": -0.0005797483,
-    "atr_pct": 0.3625,
-    "ts": "2026-05-27T12:33:50.106Z"
-  },
-  {
-    "mark_price": 75721,
-    "funding_rate": -0.0000076262,
-    "open_interest": 30358.54658,
-    "premium": -0.0005041773,
-    "atr_pct": 0.3632,
-    "ts": "2026-05-27T12:48:56.789Z"
-  },
-  {
-    "mark_price": 75655,
-    "funding_rate": -0.0000121564,
-    "open_interest": 30501.73038,
-    "premium": -0.0007397622,
-    "atr_pct": 0.3504,
-    "ts": "2026-05-27T13:04:04.730Z"
-  },
-  {
-    "mark_price": 75405,
-    "funding_rate": -0.0000150166,
-    "open_interest": 30691.4337,
-    "premium": -0.0005831677,
-    "atr_pct": 0.3809,
-    "ts": "2026-05-27T13:19:18.295Z"
-  },
-  {
-    "mark_price": 75192,
-    "funding_rate": -0.0000139608,
-    "open_interest": 30963.42006,
-    "premium": -0.0005316886,
-    "atr_pct": 0.4049,
-    "ts": "2026-05-27T13:34:26.111Z"
-  },
-  {
-    "mark_price": 74930,
-    "funding_rate": -0.0000071866,
-    "open_interest": 31044.96768,
-    "premium": -0.000494891,
-    "atr_pct": 0.429,
-    "ts": "2026-05-27T13:49:32.433Z"
-  },
-  {
-    "mark_price": 75191,
-    "funding_rate": 0.0000081082,
-    "open_interest": 30719.67668,
-    "premium": -0.0004652585,
-    "atr_pct": 0.4258,
-    "ts": "2026-05-27T14:04:40.313Z"
-  },
-  {
-    "mark_price": 74965,
-    "funding_rate": 0.0000036575,
-    "open_interest": 30698.34154,
-    "premium": -0.0005199861,
-    "atr_pct": 0.4351,
-    "ts": "2026-05-27T14:08:44.895Z"
-  },
-  {
-    "mark_price": 74883,
-    "funding_rate": 0.0000043099,
-    "open_interest": 30697.6059200001,
-    "premium": -0.0007073835,
-    "atr_pct": 0.4461,
-    "ts": "2026-05-27T14:23:55.626Z"
-  },
-  {
-    "mark_price": 75027,
-    "funding_rate": 0.0000042951,
-    "open_interest": 30871.27454,
-    "premium": -0.0004263313,
-    "atr_pct": 0.4556,
-    "ts": "2026-05-27T14:37:56.517Z"
-  },
-  {
-    "mark_price": 75236,
+    "mark_price": 73442,
     "funding_rate": 0.0000125,
-    "open_interest": 31441.83494,
-    "premium": -0.0002644061,
-    "atr_pct": 0.4775,
-    "ts": "2026-05-27T15:45:52.187Z"
+    "open_interest": 31908.02304,
+    "premium": -0.0002858465,
+    "atr_pct": 0.5971,
+    "ts": "2026-05-28T19:46:20.250Z"
+  },
+  {
+    "mark_price": 73379,
+    "funding_rate": 0.0000125,
+    "open_interest": 32040.17754,
+    "premium": -0.0003814506,
+    "atr_pct": 0.563,
+    "ts": "2026-05-28T20:01:26.964Z"
+  },
+  {
+    "mark_price": 73444,
+    "funding_rate": 0.0000125,
+    "open_interest": 31702.00156,
+    "premium": -0.0003279983,
+    "atr_pct": 0.5859,
+    "ts": "2026-05-28T20:16:59.746Z"
+  },
+  {
+    "mark_price": 73624,
+    "funding_rate": 0.0000125,
+    "open_interest": 32024.25946,
+    "premium": -0.0002240235,
+    "atr_pct": 0.5989,
+    "ts": "2026-05-28T20:32:05.092Z"
+  },
+  {
+    "mark_price": 73635,
+    "funding_rate": 0.0000125,
+    "open_interest": 32396.03558,
+    "premium": -0.0002715325,
+    "atr_pct": 0.6038,
+    "ts": "2026-05-28T20:47:10.042Z"
+  },
+  {
+    "mark_price": 73591,
+    "funding_rate": 0.0000125,
+    "open_interest": 32110.76314,
+    "premium": -0.0003803676,
+    "atr_pct": 0.5736,
+    "ts": "2026-05-28T21:02:16.357Z"
+  },
+  {
+    "mark_price": 73715,
+    "funding_rate": 0.0000125,
+    "open_interest": 32082.06112,
+    "premium": -0.000257683,
+    "atr_pct": 0.5864,
+    "ts": "2026-05-28T21:17:22.596Z"
+  },
+  {
+    "mark_price": 73683,
+    "funding_rate": 0.0000125,
+    "open_interest": 32111.92768,
+    "premium": -0.0002170993,
+    "atr_pct": 0.5888,
+    "ts": "2026-05-28T21:32:26.997Z"
+  },
+  {
+    "mark_price": 73814,
+    "funding_rate": 0.0000125,
+    "open_interest": 32279.3546,
+    "premium": -0.0002437901,
+    "atr_pct": 0.6039,
+    "ts": "2026-05-28T21:47:32.193Z"
+  },
+  {
+    "mark_price": 73817,
+    "funding_rate": 0.0000125,
+    "open_interest": 32361.79838,
+    "premium": -0.0002573305,
+    "atr_pct": 0.5884,
+    "ts": "2026-05-28T22:02:38.302Z"
+  },
+  {
+    "mark_price": 73677,
+    "funding_rate": 0.0000125,
+    "open_interest": 32285.66458,
+    "premium": -0.0002035389,
+    "atr_pct": 0.6012,
+    "ts": "2026-05-28T22:17:44.649Z"
+  },
+  {
+    "mark_price": 73558,
+    "funding_rate": 0.0000125,
+    "open_interest": 31966.91792,
+    "premium": -0.0003940913,
+    "atr_pct": 0.6141,
+    "ts": "2026-05-28T22:32:51.178Z"
+  },
+  {
+    "mark_price": 73510,
+    "funding_rate": 0.0000125,
+    "open_interest": 31717.86452,
+    "premium": -0.0002991773,
+    "atr_pct": 0.6231,
+    "ts": "2026-05-28T22:47:57.542Z"
+  },
+  {
+    "mark_price": 73506,
+    "funding_rate": 0.0000125,
+    "open_interest": 31697.2252,
+    "premium": -0.0002991976,
+    "atr_pct": 0.6044,
+    "ts": "2026-05-28T23:03:02.206Z"
+  },
+  {
+    "mark_price": 73558,
+    "funding_rate": 0.0000125,
+    "open_interest": 31732.29326,
+    "premium": -0.0003669176,
+    "atr_pct": 0.6103,
+    "ts": "2026-05-28T23:18:08.335Z"
+  },
+  {
+    "mark_price": 73688,
+    "funding_rate": 0.0000125,
+    "open_interest": 31758.40956,
+    "premium": -0.0001492416,
+    "atr_pct": 0.6197,
+    "ts": "2026-05-28T23:33:13.137Z"
+  },
+  {
+    "mark_price": 73516,
+    "funding_rate": 0.0000125,
+    "open_interest": 31764.19402,
+    "premium": -0.0003807245,
+    "atr_pct": 0.6216,
+    "ts": "2026-05-28T23:48:18.199Z"
+  },
+  {
+    "mark_price": 73628,
+    "funding_rate": 0.0000125,
+    "open_interest": 31739.37218,
+    "premium": -0.0003937275,
+    "atr_pct": 0.6079,
+    "ts": "2026-05-29T00:03:26.355Z"
+  },
+  {
+    "mark_price": 73772,
+    "funding_rate": 0.0000125,
+    "open_interest": 31707.44612,
+    "premium": -0.0002845683,
+    "atr_pct": 0.6146,
+    "ts": "2026-05-29T00:18:32.251Z"
+  },
+  {
+    "mark_price": 73746,
+    "funding_rate": 0.0000125,
+    "open_interest": 31674.03696,
+    "premium": -0.0002968686,
+    "atr_pct": 0.6177,
+    "ts": "2026-05-29T00:33:39.044Z"
+  },
+  {
+    "mark_price": 73753,
+    "funding_rate": 0.0000125,
+    "open_interest": 31705.71852,
+    "premium": -0.0003795066,
+    "atr_pct": 0.6176,
+    "ts": "2026-05-29T00:48:49.259Z"
+  },
+  {
+    "mark_price": 73714,
+    "funding_rate": 0.0000125,
+    "open_interest": 31689.9101,
+    "premium": -0.0003661414,
+    "atr_pct": 0.6065,
+    "ts": "2026-05-29T01:03:54.991Z"
+  },
+  {
+    "mark_price": 73712,
+    "funding_rate": 0.0000125,
+    "open_interest": 31701.33608,
+    "premium": -0.0003254723,
+    "atr_pct": 0.6127,
+    "ts": "2026-05-29T01:19:02.605Z"
+  },
+  {
+    "mark_price": 73578,
+    "funding_rate": 0.0000125,
+    "open_interest": 31679.54666,
+    "premium": -0.0004347176,
+    "atr_pct": 0.6251,
+    "ts": "2026-05-29T01:27:23.583Z"
   }
 ]

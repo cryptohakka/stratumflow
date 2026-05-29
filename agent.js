@@ -285,12 +285,19 @@ async function getBestAaveStableApy() {
       incentiveApys[sym] = (incentiveApys[sym] || 0) + apr;
     }
   } catch (e) { console.warn('[merkl] fetch failed:', e.message); }
-  let best = { symbol: 'USDC', apy: 0 };
+  let best = { symbol: 'USDC', apy: 0, effectiveScore: 0 };
+  const stableScores = {};
   for (const sym of STABLE_TOKENS) {
     if (!baseApys[sym]) continue;
-    const total = baseApys[sym].apy + (incentiveApys[sym] || 0);
-    if (total > best.apy) best = { symbol: sym, apy: total, base: baseApys[sym].apy, incentive: incentiveApys[sym] || 0 };
+    const totalApy = baseApys[sym].apy + (incentiveApys[sym] || 0);
+    // depeg/utilはfetchRwaRiskから渡されるが、ここでは利用不可なので暫定0
+    const effectiveScore = totalApy;
+    stableScores[sym] = { apy: totalApy, base: baseApys[sym].apy, incentive: incentiveApys[sym] || 0, effectiveScore };
+    if (effectiveScore > best.effectiveScore) {
+      best = { symbol: sym, apy: totalApy, base: baseApys[sym].apy, incentive: incentiveApys[sym] || 0, effectiveScore };
+    }
   }
+  best.stableScores = stableScores;
   return best;
 }
 
@@ -569,6 +576,154 @@ function getRecentRegimes(n) {
     .map(r => r.regime);
 }
 
+// ── RWA Risk Score ────────────────────────────────────────────────────────────
+const RWA_RISK_PATH = './data/rwa_risk.json';
+const COINGECKO_IDS = {
+  USDC:  'usd-coin',
+  USDT0: 'tether',
+  USDE:  'ethena-usde',
+  GHO:   'gho',
+};
+const ETH_CG_ID = 'ethereum';
+const EXIT_DEPTH_THRESHOLD = 200000;
+
+async function fetchRwaRisk() {
+  const provider = getProvider();
+  const pool     = new ethers.Contract(AAVE_POOL, AAVE_POOL_ABI, provider);
+
+  // 1. Aave utilization
+  const utilizationByToken = {};
+  for (const sym of STABLE_TOKENS) {
+    const addr = AAVE_TOKENS[sym];
+    if (!addr) continue;
+    try {
+      const data = await pool.getReserveData(addr);
+      const liq  = Number(data.currentLiquidityRate);
+      const borr = Number(data.currentVariableBorrowRate);
+      utilizationByToken[sym] = borr > 0 ? parseFloat((borr / (borr + liq) * 100).toFixed(2)) : 0;
+    } catch (e) {
+      console.warn(`[rwa] util ${sym}:`, e.message);
+      utilizationByToken[sym] = 0;
+    }
+  }
+  const avgUtil = Object.values(utilizationByToken).reduce((a,b)=>a+b,0) / STABLE_TOKENS.length;
+
+  // 2. Depeg
+  const depegByToken = {};
+  try {
+    const ids = [...Object.values(COINGECKO_IDS), ETH_CG_ID].join(',');
+    const res = await axios.get(
+      `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`,
+      { timeout: 8000 }
+    );
+    const ethPrice = res.data[ETH_CG_ID]?.usd ?? 3000;
+    for (const [sym, cgId] of Object.entries(COINGECKO_IDS)) {
+      const price = res.data[cgId]?.usd ?? 1.0;
+      depegByToken[sym] = parseFloat((Math.abs(1.0 - price) * 100).toFixed(4));
+    }
+  } catch (e) {
+    console.warn('[rwa] depeg:', e.message);
+    for (const sym of STABLE_TOKENS) depegByToken[sym] = 0;
+  }
+  const maxDepeg = Math.max(...Object.values(depegByToken));
+
+  // 3. Exit depth — Odos APIで取得してhistoryにも書き込む(1h cache)
+  let exitDepthTotal = EXIT_DEPTH_THRESHOLD * 2;
+  let cmETH_100k = null, cmETH_500k = null, mETH_100k = null, mETH_500k = null;
+  try {
+    const hFile = './data/liquidity_history.json';
+    let h = [];
+    try { h = JSON.parse(fs.readFileSync(hFile, 'utf8')); } catch {}
+    const lastEntry = h.length > 0 ? h[h.length - 1] : null;
+    const age = lastEntry ? Date.now() - new Date(lastEntry.ts).getTime() : Infinity;
+    if (age < 60 * 60 * 1000) {
+      // キャッシュ有効 — 再取得しない
+      cmETH_100k = lastEntry.cmETH_100k; cmETH_500k = lastEntry.cmETH_500k;
+      mETH_100k  = lastEntry.mETH_100k;  mETH_500k  = lastEntry.mETH_500k;
+      console.log('[rwa] exit depth cache hit');
+    } else {
+    async function odosImpact(tokenAddress, amount) {
+      const r = await axios.post('https://enterprise-api.odos.xyz/sor/quote/v3', {
+        chainId: 5000,
+        inputTokens: [{ tokenAddress, amount }],
+        outputTokens: [{ tokenAddress: process.env.USDC, proportion: 1 }],
+        userAddr: process.env.WALLET,
+        slippageLimitPercent: 50,
+      }, { headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ODOS_API_KEY }, timeout: 12000 });
+      return r.data.priceImpact ?? null;
+    }
+    // cmETH/mETH価格をDefiLlamaから取得
+    const llamaRes = await axios.get(
+      `https://coins.llama.fi/prices/current/mantle:${process.env.CMETH},mantle:${process.env.METH}`,
+      { timeout: 8000 }
+    );
+    const cmethPrice = llamaRes.data.coins[`mantle:${process.env.CMETH}`]?.price ?? 2200;
+    const methPrice  = llamaRes.data.coins[`mantle:${process.env.METH}`]?.price  ?? 2200;
+    const cmAmt100k = BigInt(Math.round(100000 / cmethPrice * 1e18)).toString();
+    const cmAmt500k = BigInt(Math.round(500000 / cmethPrice * 1e18)).toString();
+    const meAmt100k = BigInt(Math.round(100000 / methPrice  * 1e18)).toString();
+    const meAmt500k = BigInt(Math.round(500000 / methPrice  * 1e18)).toString();
+    [cmETH_100k, cmETH_500k] = await Promise.all([odosImpact(process.env.CMETH, cmAmt100k), odosImpact(process.env.CMETH, cmAmt500k)]);
+    [mETH_100k,  mETH_500k]  = await Promise.all([odosImpact(process.env.METH,  meAmt100k), odosImpact(process.env.METH,  meAmt500k)]);
+    const hFile = './data/liquidity_history.json';
+    let h = [];
+    try { h = JSON.parse(fs.readFileSync(hFile, 'utf8')); } catch {}
+    h.push({ ts: new Date().toISOString(), cmETH_100k, cmETH_500k, mETH_100k, mETH_500k });
+    if (h.length > 96) h = h.slice(-96);
+    fs.writeFileSync(hFile, JSON.stringify(h));
+    const cmOk = cmETH_100k !== null && cmETH_100k > -2;
+    const meOk = mETH_100k  !== null && mETH_100k  > -2;
+    exitDepthTotal = (cmOk ? 100000 : 0) + (meOk ? 100000 : 0);
+    console.log(`[rwa] exit depth cmETH=${cmETH_100k?.toFixed(2)}% mETH=${mETH_100k?.toFixed(2)}%`);
+    } // end else
+  } catch (e) { console.warn('[rwa] exit depth:', e.message); }
+
+  // 4. スコア統合 (0-100)
+  // stableScores計算
+  let stableScores = {};
+  let selectedSym = 'USDC';
+  try {
+    const bestRaw = await getBestAaveStableApy();
+    let bestEffScore = -1;
+    for (const [sym, s] of Object.entries(bestRaw.stableScores || {})) {
+      const depeg = depegByToken[sym] || 0;
+      const util  = utilizationByToken[sym] || 0;
+      const effectiveScore = s.apy * (1 - depeg / 2) * (1 - util / 150);
+      stableScores[sym] = { apy: s.apy, base: s.base, incentive: s.incentive, depeg, util, effectiveScore };
+      if (effectiveScore > bestEffScore) { bestEffScore = effectiveScore; selectedSym = sym; }
+    }
+  } catch (e) { console.warn('[rwa] stableScores:', e.message); }
+  const selectedStable = stableScores[selectedSym] || { depeg: 0, util: 0 };
+  const exitNorm  = 1 - Math.min(exitDepthTotal / 400000, 1.0);
+  const depegNorm = Math.min(selectedStable.depeg / 2.0,  1.0);
+  const utilNorm  = Math.min(selectedStable.util  / 90.0, 1.0);
+  const score     = Math.round((exitNorm * 0.50 + depegNorm * 0.30 + utilNorm * 0.20) * 100);
+
+  // 5. Override判定
+  const override = exitDepthTotal < EXIT_DEPTH_THRESHOLD ? 'risk_off'
+    : score >= 70 ? 'risk_off'
+    : score >= 50 ? 'neutral_cap'
+    : null;
+
+  // 4b. mETH TVL (DefiLlama)
+  let methTvl = null;
+  try {
+    const tvlRes = await axios.get('https://api.llama.fi/tvl/meth-protocol', { timeout: 6000 });
+    methTvl = Math.round(tvlRes.data);
+  } catch (e) { console.warn('[rwa] meth tvl:', e.message); }
+
+  const result = {
+    score, override, exitDepthTotal, exitDepthThreshold: EXIT_DEPTH_THRESHOLD,
+    maxDepeg, depegByToken,
+    avgUtilization: parseFloat(avgUtil.toFixed(2)),
+    utilizationByToken, stableScores, methTvl, updatedAt: new Date().toISOString(),
+  };
+  fs.writeFileSync(RWA_RISK_PATH, JSON.stringify(result, null, 2));
+  console.log(`[rwa] score=${score} override=${override} exitDepth=$${exitDepthTotal}`);
+  return result;
+}
+
+
 function saveRegime(regime) {
   getDb()
     .prepare('INSERT INTO regime_history (regime, phase, confidence, btc_price, rebalance) VALUES (?,?,?,?,?)')
@@ -608,20 +763,56 @@ async function executeRebalance(regime, { force = false } = {}) {
     }
   }
 
-  // risk_on: Aave stable枠を動的に決定
-  let resolvedTargets = [...targets];
+
+  // ── Guard 3: RWAリスクチェック ───────────────────────────────────────────
+  let rwaRisk = null;
   try {
-    const best = await getBestAaveStableApy();
+    rwaRisk = await fetchRwaRisk();
+    if (rwaRisk.override === 'risk_off' && regimeType !== 'risk_off') {
+      await notify(
+        `🛡️ **RWA Override → RISK_OFF**\n` +
+        `Score: ${rwaRisk.score}/100 | ExitDepth: $${rwaRisk.exitDepthTotal.toLocaleString()} (threshold: $${rwaRisk.exitDepthThreshold.toLocaleString()})\n` +
+        `MaxDepeg: ${rwaRisk.maxDepeg}% | AvgUtil: ${rwaRisk.avgUtilization}%\n` +
+        `Original regime: ${regimeType.toUpperCase()} → forced RISK_OFF`
+      );
+      regime = { ...regime, regime: 'risk_off', rwaOverride: true, rwaScore: rwaRisk.score };
+      regimeType !== 'risk_off' && (regime.rebalance = true);
+    } else if (rwaRisk.override === 'neutral_cap' && regimeType === 'risk_on') {
+      await notify(
+        `⚠️ **RWA Cap → NEUTRAL** (score ${rwaRisk.score}/100)\n` +
+        `MaxDepeg: ${rwaRisk.maxDepeg}% | AvgUtil: ${rwaRisk.avgUtilization}%\n` +
+        `risk_on blocked → downgraded to NEUTRAL`
+      );
+      regime = { ...regime, regime: 'neutral', rwaOverride: true, rwaScore: rwaRisk.score };
+      regime.rebalance = true;
+    } else {
+      await notify(`✅ **RWA Check passed** — score=${rwaRisk.score}/100 override=none`);
+    }
+  } catch (e) {
+    console.warn('[rwa] guard failed, proceeding without override:', e.message);
+  }
+  const finalRegimeType = regime.regime;
+  const finalTargets    = ALLOCATIONS[finalRegimeType] || targets;
+
+  // risk_on: Aave stable枠をeffectiveScore(APY×depeg割引×util割引)で動的に決定
+  let resolvedTargets = [...finalTargets];
+  try {
+    const rwaData = JSON.parse(require('fs').readFileSync('./data/rwa_risk.json', 'utf8'));
+    const scores = rwaData.stableScores || {};
+    let bestSym = 'USDC', bestScore = -1, bestApy = 0;
+    for (const [sym, s] of Object.entries(scores)) {
+      if (s.effectiveScore > bestScore) { bestScore = s.effectiveScore; bestSym = sym; bestApy = s.apy; }
+    }
     resolvedTargets = resolvedTargets.map(t =>
-      t.inAave ? { ...t, token: best.symbol, apy: best.apy } : t
+      t.inAave ? { ...t, token: bestSym, apy: bestApy } : t
     );
-    await notify(`📊 **Aave best stable:** ${best.symbol} @ ${best.apy.toFixed(2)}% APY`);
+    await notify(`📊 **Aave best stable:** ${bestSym} @ ${bestApy.toFixed(2)}% APY (effectiveScore=${bestScore.toFixed(3)})`);
   } catch (e) {
     console.warn('[aave] APY check failed, defaulting to USDC:', e.message);
   }
 
   await notify(
-    `🔄 **Rebalancing → ${regimeType.toUpperCase()}**\n` +
+    `🔄 **Rebalancing → ${finalRegimeType.toUpperCase()}**\n` +
     `BTC: $${regime.btc_price} | Phase: ${regime.phase} | Confidence: ${regime.confidence}\n` +
     `Targets: ${resolvedTargets.map(t => `${t.token}${t.inAave ? '(Aave)' : ''} ${(t.pct * 100).toFixed(0)}%`).join(', ')}\n` +
     `Reason: ${regime.reasoning}`
@@ -629,7 +820,7 @@ async function executeRebalance(regime, { force = false } = {}) {
 
   if (process.env.AUTO_REBALANCE !== 'true') {
     await notify('⏸️ **AUTO_REBALANCE=false** — dry-run only, no txs sent');
-    savePositions({ regime: regimeType, targets: resolvedTargets, updatedAt: new Date().toISOString() });
+    savePositions({ regime: finalRegimeType, targets: resolvedTargets, updatedAt: new Date().toISOString() });
     return;
   }
 
@@ -720,8 +911,8 @@ async function executeRebalance(regime, { force = false } = {}) {
     }
   }
 
-  savePositions({ regime: regimeType, targets: resolvedTargets, updatedAt: new Date().toISOString() });
-  await notify(`✅ **Rebalance complete** — Portfolio aligned to ${regimeType.toUpperCase()}`);
+  savePositions({ regime: finalRegimeType, targets: resolvedTargets, updatedAt: new Date().toISOString() });
+  await notify(`✅ **Rebalance complete** — Portfolio aligned to ${finalRegimeType.toUpperCase()}${regime.rwaOverride ? ` (RWA Override, score=${regime.rwaScore})` : ``}`);
 }
 
 // ── Main loop ─────────────────────────────────────────────────────────────────
@@ -737,6 +928,7 @@ async function run() {
       console.log('\n[stratumflow] running regime detection...');
       const regime     = await detectRegime();
       saveRegime(regime);
+      // RWAリスク更新はexecuteRebalance内Guard3で実施済み（重複呼び出し防止）
       const lastRegime = getLastRegime();
 
       const regimeChanged   = lastRegime !== null && lastRegime !== regime.regime;
@@ -760,6 +952,7 @@ async function run() {
 // ── Exports ───────────────────────────────────────────────────────────────────
 module.exports = {
   executeRebalance,
+  fetchRwaRisk,
   getPortfolio,
   getSwapQuote,
   getBestAaveStableApy,

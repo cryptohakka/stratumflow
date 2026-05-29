@@ -183,6 +183,7 @@ app.post('/api/force-regime', (req, res) => {
 });
 
 // ── Static frontend ───────────────────────────────────────────────────────────
+app.get('/rwa', (req, res) => res.sendFile(path.join(__dirname, 'public/rwa.html')));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
@@ -244,4 +245,97 @@ app.get('/api/yields', async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+// ── /api/liquidity  (Odos price impact, 1h cache) ─────────────────────────
+let liquidityCache = null;
+let liquidityCacheTs = 0;
+const LIQUIDITY_TTL = 60 * 60 * 1000;
+
+const LIQUIDITY_SIZES = [
+  
+  
+  { label: '$100K', amount: '30000000000000000000' },
+  { label: '$500K', amount: '150000000000000000000' },
+];
+
+async function odosImpact(tokenAddress, amount) {
+  const res = await fetch('https://enterprise-api.odos.xyz/sor/quote/v3', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ODOS_API_KEY },
+    body: JSON.stringify({
+      chainId: 5000,
+      inputTokens: [{ tokenAddress, amount }],
+      outputTokens: [{ tokenAddress: process.env.USDC, proportion: 1 }],
+      userAddr: process.env.WALLET,
+      slippageLimitPercent: 50,
+    }),
+  });
+  const d = await res.json();
+  return { impact: d.priceImpact ?? null, inValue: d.inValues?.[0] ?? null };
+}
+
+
+// ── liquidity history (24h, persisted to JSON) ────────────────────────────
+const HISTORY_FILE = path.join(__dirname, 'data/liquidity_history.json');
+const HISTORY_MAX  = 96; // 24h @ 15min intervals max
+
+function loadHistory() {
+  try { return JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf8')); } catch { return []; }
+}
+
+function saveHistory(entry) {
+  let h = loadHistory();
+  h.push(entry);
+  if (h.length > HISTORY_MAX) h = h.slice(-HISTORY_MAX);
+  fs.writeFileSync(HISTORY_FILE, JSON.stringify(h));
+}
+
+app.get('/api/liquidity/history', (req, res) => {
+  res.json(loadHistory());
+});
+
+app.get('/api/liquidity', async (req, res) => {
+  try {
+    const now = Date.now();
+    if (liquidityCache && now - liquidityCacheTs < LIQUIDITY_TTL) {
+      return res.json(liquidityCache);
+    }
+    const tokens = { cmETH: process.env.CMETH, mETH: process.env.METH };
+    const result = {};
+    for (const [symbol, addr] of Object.entries(tokens)) {
+      result[symbol] = [];
+      for (const { label, amount } of LIQUIDITY_SIZES) {
+        await new Promise(r => setTimeout(r, 3000));
+        const { impact, inValue } = await odosImpact(addr, amount);
+        result[symbol].push({ label, inValue, impact });
+      }
+    }
+    result.updatedAt = new Date().toISOString();
+    // save to history
+    saveHistory({
+      ts: result.updatedAt,
+      cmETH_100k: result.cmETH.find(r => r.label === '$100K')?.impact ?? null,
+      cmETH_500k: result.cmETH.find(r => r.label === '$500K')?.impact ?? null,
+      mETH_100k:  result.mETH.find(r =>  r.label === '$100K')?.impact ?? null,
+      mETH_500k:  result.mETH.find(r =>  r.label === '$500K')?.impact ?? null,
+    });
+    liquidityCache = result;
+    liquidityCacheTs = now;
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+
+// ── /api/rwa-risk ─────────────────────────────────────────────────────────────
+const RWA_RISK_FILE = path.join(__dirname, 'data/rwa_risk.json');
+app.get('/api/rwa-risk', (req, res) => {
+  // agent.jsのrun()ループが定期更新 → UIはファイル読み取りのみ（外部APIコールなし）
+  if (fs.existsSync(RWA_RISK_FILE)) {
+    return res.json(JSON.parse(fs.readFileSync(RWA_RISK_FILE, 'utf8')));
+  }
+  res.status(503).json({ error: 'RWA risk data not yet available — agent not running?' });
+});
+
 // BigInt serialization fix (add at top of file after requires)
