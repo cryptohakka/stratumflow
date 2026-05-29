@@ -61,7 +61,7 @@ Arbiter    →  decides
 
 Each regime evaluation triggers a structured adversarial debate:
 
-1. **Architect** — analyzes BTC price action, funding rate, OI delta, and news sentiment. Proposes a regime with bullish/bearish thesis.
+1. **Architect** — analyzes BTC price action, funding rate, OI delta, and momentum signals. Proposes a regime with bullish/bearish thesis.
 2. **Auditor** — challenges the proposal. Identifies contradicting signals, tail risks, and overconfidence.
 3. **Arbiter** — weighs both sides and delivers a final verdict: regime + confidence score + rationale.
 
@@ -87,13 +87,13 @@ utilHealth = 1 if util < 95% else 0
 
 ### Exit Depth (via Odos SOR)
 
-Live simulation of a $100K swap impact on the current regime's primary asset (cmETH in risk-on, mETH in neutral). If exit depth exceeds threshold, an **override** blocks risk-on execution regardless of the regime signal.
+Live simulation of a $100K swap's price impact on the current regime's primary asset (cmETH in risk-on, mETH in neutral). If the swap would move price by more than 2%, an **override** blocks risk-on execution regardless of the regime signal.
 
 ### Override Rules
 
 | Condition | Action |
 |-----------|--------|
-| Exit depth > −2% | Block risk-on, force neutral |
+| $100K swap price impact > 2% | Block risk-on, force neutral |
 | Depeg > 50bps | Downgrade stable selection |
 | Aave util > 95% | Exclude from stable selection |
 
@@ -107,7 +107,7 @@ This is the core differentiator: **automated risk management that constrains the
 - Liquidity-aware RWA override engine with live Odos exit-depth simulation
 - Risk-adjusted stablecoin selection across Mantle Aave pools
 - Regime-gated allocation with confidence thresholds
-- A2A-compatible API for multi-agent orchestration
+- A2A-compatible API for multi-agent orchestration — external agents can query regime state, trigger rebalances, or coordinate execution flows
 - Autonomous execution on Mantle via Merchant Moe LB Router
 
 ---
@@ -118,7 +118,7 @@ This is the core differentiator: **automated risk management that constrains the
 BTC signals (price, funding, OI, news)
         │
    ┌────▼────────────────────┐
-   │   Triple-A Council      │  ← 30min loop
+   │   Triple-A Council      │  ← continuous 30min autonomous loop
    │  Architect→Auditor→Arbiter │
    └────────────┬────────────┘
                 │ regime + confidence
@@ -191,6 +191,16 @@ BTC signals (price, funding, OI, news)
 | GET | `/.well-known/agent.json` | A2A agent card |
 | POST | `/a2a/tasks/send` | Send rebalance / regime task |
 | GET | `/a2a/health` | Health check |
+
+---
+
+## Future Work
+
+- Cross-chain allocation across Mantle and other yield-bearing ecosystems
+- Autonomous hedging during detected liquidity stress
+- Intent-based execution routing
+- Vaultization (ERC-4626) for external capital
+- DAO-governed risk parameters
 
 ---
 
