@@ -603,7 +603,7 @@ async function fetchRwaRisk(regimeType = 'risk_on') {
   }
   const maxDepeg = Math.max(...Object.values(depegByToken));
 
-  let exitDepthTotal = EXIT_DEPTH_THRESHOLD * 2;
+  let exitDepthTotal = null;
   let cmETH_100k = null, cmETH_500k = null, mETH_100k = null, mETH_500k = null;
   try {
     const h = JSON.parse(fs.readFileSync('./data/liquidity_history.json', 'utf8'));
@@ -645,13 +645,16 @@ async function fetchRwaRisk(regimeType = 'risk_on') {
     }
   } catch (e) { console.warn('[rwa] stableScores:', e.message); }
   const selectedStable = stableScores[selectedSym] || { depeg: 0, util: 0 };
-  // exitNorm: 1 - min(exitDepthTotal / 200K, 1.0)
-  const exitNorm = 1 - Math.min(exitDepthTotal / 200000, 1.0);
+  // exitNorm: null if no data, else 1 - min(exitDepthTotal / 200K, 1.0)
+  const hasExitData = exitDepthTotal !== null;
+  const exitNorm = hasExitData ? 1 - Math.min(exitDepthTotal / 200000, 1.0) : null;
   const depegNorm = Math.min(selectedStable.depeg / 2.0,  1.0);
   const utilNorm  = Math.min(selectedStable.util  / 90.0, 1.0);
-  const score     = Math.round((exitNorm * 0.50 + depegNorm * 0.30 + utilNorm * 0.20) * 100);
+  const score = exitNorm !== null
+    ? Math.round((exitNorm * 0.50 + depegNorm * 0.30 + utilNorm * 0.20) * 100)
+    : Math.round((depegNorm * 0.60 + utilNorm * 0.40) * 100);
 
-  const override = exitDepthTotal < EXIT_DEPTH_THRESHOLD ? 'risk_off'
+  const override = (hasExitData && exitDepthTotal < EXIT_DEPTH_THRESHOLD) ? 'risk_off'
     : score >= 70 ? 'risk_off'
     : score >= 50 ? 'neutral_cap'
     : null;
