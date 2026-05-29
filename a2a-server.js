@@ -15,7 +15,7 @@ app.use(express.json());
 // ── Agent Card (A2A discovery) ────────────────────────────────────────────────
 const AGENT_CARD = {
   name: 'StratumFlow',
-  description: 'Autonomous DeFi portfolio manager on Mantle. Detects BTC market regime via Triple-A multi-agent framework and rebalances between cmETH, mETH, USDY, and USDC using Merchant Moe.',
+  description: 'Autonomous DeFi portfolio manager on Mantle. Detects BTC market regime via Triple-A multi-agent framework and rebalances between cmETH, mETH, and Aave stablecoins on Mantle.',
   url: process.env.A2A_BASE_URL || 'https://stratumflow.a2aflow.space',
   version: '1.0.0',
   capabilities: {
@@ -50,7 +50,7 @@ const AGENT_CARD = {
     {
       id: 'get_aave_apy',
       name: 'Get Aave V3 Mantle APY',
-      description: 'Returns the best supply APY across USDY, USDC, USDe on Aave V3 Mantle.',
+      description: 'Returns the best supply APY across USDC, USDe, USDT0, GHO on Aave V3 Mantle.',
       examples: ['What is the best Aave APY?', 'Show stable yields on Mantle'],
     },
   ],

@@ -208,19 +208,17 @@ app.get('/api/yields', async (req, res) => {
   try {
     const now = Date.now();
     if (!yieldsCache || now - yieldsCacheTs > YIELDS_TTL) {
-      // DefiLlama: mETH + USDY
+      // DefiLlama: mETH yield
       const r = await fetch('https://yields.llama.fi/pools');
       const data = await r.json();
       const pools = data.data;
       const meth = pools.find(p => p.project === 'meth-protocol' && p.chain === 'Ethereum' && p.symbol === 'METH');
-      const usdy = pools.find(p => p.project === 'ondo-yield-assets' && p.chain === 'Mantle' && p.symbol === 'USDY');
       // Aave all stables
       let aaveAll = {};
       try { aaveAll = await getAllAaveStableApys(); } catch {}
       yieldsCache = {
         meth_apy:   meth?.apy ?? 2.1,
         cmeth_apy:  meth?.apy ?? 2.1,
-        usdy_apy:   usdy?.apy ?? 3.55,
         aave_usdc:  aaveAll.USDC  ?? null,
         aave_usde:  aaveAll.USDE  ?? null,
         aave_usdt0: aaveAll.USDT0 ?? null,
@@ -252,8 +250,6 @@ let liquidityCacheTs = 0;
 const LIQUIDITY_TTL = 60 * 60 * 1000;
 
 const LIQUIDITY_SIZES = [
-  
-  
   { label: '$100K', amount: '30000000000000000000' },
   { label: '$500K', amount: '150000000000000000000' },
 ];
@@ -337,4 +333,3 @@ app.get('/api/rwa-risk', (req, res) => {
   res.status(503).json({ error: 'RWA risk data not yet available — agent not running?' });
 });
 
-// BigInt serialization fix (add at top of file after requires)

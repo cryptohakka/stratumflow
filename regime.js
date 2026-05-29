@@ -190,7 +190,7 @@ Provide:
 2. Primary scenario (most likely regime)
 3. Contrarian scenario (what if the primary is wrong?)
 
-For portfolio management context: determine if conditions favor RISK-ON (deploy into cmETH + highest Aave stable yield on Mantle) or RISK-OFF (consolidate into USDY/USDC stable yield on Mantle).
+For portfolio management context: determine if conditions favor RISK-ON (deploy into cmETH + highest Aave stable yield on Mantle) or RISK-OFF (consolidate into Aave USDC stable yield on Mantle).
 
 Be concise, 3-5 sentences. Start directly with your analysis — no preamble like 'Here is my analysis'.`;
 
@@ -236,7 +236,7 @@ Return ONLY valid JSON, no explanation outside the JSON:
 
 Rules:
 - risk_on: deploy capital into highest-yield vaults
-- risk_off: consolidate into USYC stable yield
+- risk_off: consolidate into Aave USDC stable yield
 - rebalance: true if regime changed or confidence > 0.7
 - confidence reflects Auditor's criticism strength (stronger criticism = lower confidence)`;
 
