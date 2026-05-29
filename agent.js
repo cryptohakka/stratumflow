@@ -587,7 +587,7 @@ const COINGECKO_IDS = {
 const ETH_CG_ID = 'ethereum';
 const EXIT_DEPTH_THRESHOLD = 200000;
 
-async function fetchRwaRisk() {
+async function fetchRwaRisk(regimeType = 'risk_on') {
   const provider = getProvider();
   const pool     = new ethers.Contract(AAVE_POOL, AAVE_POOL_ABI, provider);
 
@@ -671,12 +671,27 @@ async function fetchRwaRisk() {
     h.push({ ts: new Date().toISOString(), cmETH_100k, cmETH_500k, mETH_100k, mETH_500k });
     if (h.length > 96) h = h.slice(-96);
     fs.writeFileSync(hFile, JSON.stringify(h));
-    const cmOk = cmETH_100k !== null && cmETH_100k > -2;
-    const meOk = mETH_100k  !== null && mETH_100k  > -2;
-    exitDepthTotal = (cmOk ? 100000 : 0) + (meOk ? 100000 : 0);
-    console.log(`[rwa] exit depth cmETH=${cmETH_100k?.toFixed(2)}% mETH=${mETH_100k?.toFixed(2)}%`);
+    console.log(`[rwa] exit depth fetched cmETH=${cmETH_100k?.toFixed(2)}% mETH=${mETH_100k?.toFixed(2)}%`);
     } // end else
   } catch (e) { console.warn('[rwa] exit depth:', e.message); }
+
+  // regime別exit depth判定 (キャッシュヒット/ミス共通)
+  const cmOk = cmETH_100k !== null && cmETH_100k > -2;
+  const meOk = mETH_100k  !== null && mETH_100k  > -2;
+  let monitoredToken = null;
+  let reentryWarning = false;
+  if (regimeType === 'risk_on') {
+    monitoredToken = 'cmETH';
+    exitDepthTotal = cmOk ? 200000 : 0;
+  } else if (regimeType === 'neutral') {
+    monitoredToken = 'mETH';
+    exitDepthTotal = meOk ? 200000 : 0;
+  } else {
+    monitoredToken = null;
+    exitDepthTotal = EXIT_DEPTH_THRESHOLD * 2;
+    reentryWarning = !cmOk;
+  }
+  console.log(`[rwa] exit depth cmETH=${cmETH_100k?.toFixed(2)}% mETH=${mETH_100k?.toFixed(2)}% monitored=${monitoredToken}`);
 
   // 4. スコア統合 (0-100)
   // stableScores計算
@@ -694,7 +709,8 @@ async function fetchRwaRisk() {
     }
   } catch (e) { console.warn('[rwa] stableScores:', e.message); }
   const selectedStable = stableScores[selectedSym] || { depeg: 0, util: 0 };
-  const exitNorm  = 1 - Math.min(exitDepthTotal / 400000, 1.0);
+  // exitNorm: 1 - min(exitDepthTotal / 200K, 1.0)
+  const exitNorm = 1 - Math.min(exitDepthTotal / 200000, 1.0);
   const depegNorm = Math.min(selectedStable.depeg / 2.0,  1.0);
   const utilNorm  = Math.min(selectedStable.util  / 90.0, 1.0);
   const score     = Math.round((exitNorm * 0.50 + depegNorm * 0.30 + utilNorm * 0.20) * 100);
@@ -713,7 +729,8 @@ async function fetchRwaRisk() {
   } catch (e) { console.warn('[rwa] meth tvl:', e.message); }
 
   const result = {
-    score, override, exitDepthTotal, exitDepthThreshold: EXIT_DEPTH_THRESHOLD,
+    score, override, exitDepthTotal, exitDepthThreshold: EXIT_DEPTH_THRESHOLD, exitImpact100k: monitoredToken === 'cmETH' ? cmETH_100k : monitoredToken === 'mETH' ? mETH_100k : null,
+    regimeContext: regimeType, monitoredToken, reentryWarning: reentryWarning || false,
     maxDepeg, depegByToken,
     avgUtilization: parseFloat(avgUtil.toFixed(2)),
     utilizationByToken, stableScores, methTvl, updatedAt: new Date().toISOString(),
@@ -767,7 +784,7 @@ async function executeRebalance(regime, { force = false } = {}) {
   // ── Guard 3: RWAリスクチェック ───────────────────────────────────────────
   let rwaRisk = null;
   try {
-    rwaRisk = await fetchRwaRisk();
+    rwaRisk = await fetchRwaRisk(regimeType);
     if (rwaRisk.override === 'risk_off' && regimeType !== 'risk_off') {
       await notify(
         `🛡️ **RWA Override → RISK_OFF**\n` +

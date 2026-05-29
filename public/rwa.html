@@ -106,6 +106,17 @@ html, body { background: var(--m-bg); color: var(--m-text); font-family: -apple-
 .backing-label { color: var(--m-muted); }
 .backing-val { color: var(--m-text); text-align: right; }
 .backing-safe { color: var(--m-accent); }
+
+.rwa-formula-block { background: rgba(0,255,160,0.04); border: 1px solid rgba(0,255,160,0.15); border-radius: 8px; padding: 14px 16px; margin-bottom: 18px; font-family: monospace; }
+.rwa-formula-title { font-size: 10px; color: var(--m-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+.rwa-formula-eq    { font-size: 13px; color: var(--m-text); line-height: 2; }
+.rwa-formula-eq .eq-label { color: var(--m-muted); font-size: 11px; }
+.rwa-metric-cards  { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px; }
+.rwa-metric-card   { background: var(--m-surface2); border: 1px solid var(--m-border); border-radius: 8px; padding: 12px 14px; }
+.rwa-metric-card-label  { font-size: 10px; color: var(--m-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+.rwa-metric-card-val    { font-size: 26px; font-weight: 700; font-family: monospace; line-height: 1; }
+.rwa-metric-card-weight { font-size: 10px; color: var(--m-label); margin-top: 5px; }
+.rwa-metric-card-sub    { font-size: 11px; color: var(--m-muted); margin-top: 4px; font-family: monospace; }
 .backing-warning { font-size: 11px; color: #f09050; background: rgba(240,144,80,0.08); border: 1px solid rgba(240,144,80,0.2); border-radius: 6px; padding: 10px 12px; margin-top: 4px; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
@@ -148,7 +159,31 @@ html, body { background: var(--m-bg); color: var(--m-text); font-family: -apple-
             </div>
           </div>
         </div>
-        <div class="rwa-detail-grid" id="rwa-detail-grid"></div>
+        
+        <div class="rwa-metric-cards">
+          <div class="rwa-metric-card">
+            <div class="rwa-metric-card-label">Exit Depth Score</div>
+            <div class="rwa-metric-card-val" id="rwa-m-exit">—</div>
+            <div class="rwa-metric-card-weight">weight 50%</div>
+            <div class="rwa-metric-card-sub" id="rwa-m-exit-sub">—</div>
+          </div>
+          <div class="rwa-metric-card">
+            <div class="rwa-metric-card-label">Depeg Score</div>
+            <div class="rwa-metric-card-val" id="rwa-m-depeg">—</div>
+            <div class="rwa-metric-card-weight">weight 30%</div>
+            <div class="rwa-metric-card-sub" id="rwa-m-depeg-sub">—</div>
+          </div>
+          <div class="rwa-metric-card">
+            <div class="rwa-metric-card-label">Util Score</div>
+            <div class="rwa-metric-card-val" id="rwa-m-util">—</div>
+            <div class="rwa-metric-card-weight">weight 20%</div>
+            <div class="rwa-metric-card-sub" id="rwa-m-util-sub">—</div>
+          </div>
+        </div>
+        <div class="rwa-formula-block">
+          <div class="rwa-formula-title">Score Calculation</div>
+          <div class="rwa-formula-eq" id="rwa-formula-eq">—</div>
+        </div>
         <div class="rwa-rule-box">
           <div class="rwa-rule-title">Override Rules</div>
           <div class="rwa-rule-row"><span class="rwa-rule-pill red">score ≥ 70 or exit depth &lt; $200K</span><span class="rwa-rule-arrow">→</span><span class="rwa-rule-result">Force RISK_OFF</span></div>
@@ -158,6 +193,11 @@ html, body { background: var(--m-bg); color: var(--m-text); font-family: -apple-
       </div>
     </div>
 
+    <!-- Exit Depth Panel -->
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-title">exit depth — live score</div>
+      <div id="exit-depth-summary" style="font-family:monospace;font-size:12px;color:var(--m-text);line-height:2;">—</div>
+    </div>
     <div class="grid2">
       <div class="card">
         <div class="card-title">cmETH exit depth</div>
@@ -205,6 +245,13 @@ html, body { background: var(--m-bg); color: var(--m-text); font-family: -apple-
         <div class="card-title">mETH exit depth — 24h</div>
         <canvas id="chart-meth" height="120"></canvas>
       </div>
+    </div>
+
+    <!-- Stable Panel -->
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-title">aave stable selection</div>
+      <div id="stable-selected-header" style="margin-bottom:12px;padding:10px 12px;background:rgba(0,255,160,0.04);border:1px solid rgba(0,255,160,0.15);border-radius:6px;font-family:monospace;font-size:12px;">—</div>
+      <div id="stable-table-wrap"></div>
     </div>
 
     <div class="grid1">
@@ -394,30 +441,95 @@ async function loadRwaRisk() {
     // ゲージ描画
     drawGauge(document.getElementById('rwa-gauge'), data.score);
 
-    // 詳細グリッド
-    // スコア内訳をlabel下に表示
-    const labelEl2 = document.getElementById('rwa-score-label');
-    const exitColor = data.exitDepthTotal < data.exitDepthThreshold ? '#ff5050' : '#00ffa0';
+    // Panel 1: RWA Score formula
     const scores = data.stableScores || {};
     const selectedSym = Object.entries(scores).sort((a,b) => b[1].effectiveScore - a[1].effectiveScore)[0]?.[0] || 'USDC';
     const sel = scores[selectedSym] || { depeg: 0, util: 0 };
     const exitNorm  = Math.max(0, 1 - data.exitDepthTotal / 400000);
     const depegNorm = Math.min(sel.depeg / 2.0, 1.0);
     const utilNorm  = Math.min(sel.util / 90.0, 1.0);
+    const exitColor = data.exitDepthTotal < data.exitDepthThreshold ? '#ff5050' : '#00ffa0';
     const level = data.score >= 70 ? 'HIGH RISK' : data.score >= 50 ? 'ELEVATED' : 'NORMAL';
-    labelEl2.innerHTML = `${level} <span style="font-size:11px;color:${exitColor};margin-left:12px;">exit $${(data.exitDepthTotal/1000).toFixed(0)}K</span>
-      <div style="font-size:10px;color:var(--m-muted);margin-top:6px;font-family:monospace;">
-        score = exitDepth(50%) + ${selectedSym} depeg(30%) + ${selectedSym} util(20%)<br>
-        = ${(exitNorm*50).toFixed(1)} + ${(depegNorm*30).toFixed(1)} + ${(utilNorm*20).toFixed(1)} = ${data.score}
-      </div>`;
+    labelEl.innerHTML = `${level} <span style="font-size:11px;color:${exitColor};margin-left:12px;">exit $${(data.exitDepthTotal/1000).toFixed(0)}K</span>`;
+    const exitNormDisplay = 1 - Math.min(data.exitDepthTotal / 200000, 1.0);
+    const exitScore  = exitNormDisplay * 50;
+    const depegScore = depegNorm * 30;
+    const utilScore  = utilNorm * 20;
+    const depegColor = depegNorm > 0.5 ? '#ff5050' : depegNorm > 0.2 ? '#ffc800' : '#00ffa0';
+    const utilColor  = utilNorm  > 0.9 ? '#ff5050' : utilNorm  > 0.7 ? '#ffc800' : '#00ffa0';
 
-    // Aave stable専用グリッド
-    const detailGrid = document.getElementById('rwa-detail-grid');
-    const depegEntries = Object.entries(data.depegByToken || {});
-    const maxDepegEntry = depegEntries.sort((a,b) => b[1]-a[1])[0] || ['—', 0];
-    detailGrid.innerHTML = `
+    const mExit = document.getElementById('rwa-m-exit');
+    if (mExit) { mExit.textContent = exitScore.toFixed(1); mExit.style.color = exitColor; }
+    const mExitSub = document.getElementById('rwa-m-exit-sub');
+    if (mExitSub) mExitSub.innerHTML = `exitNorm = <span style="color:${exitColor}">${exitNormDisplay.toFixed(3)}</span>`;
 
-      <div class="rwa-detail-item" style="grid-column:span 3; padding:0;">
+    const mDepeg = document.getElementById('rwa-m-depeg');
+    if (mDepeg) { mDepeg.textContent = depegScore.toFixed(1); mDepeg.style.color = depegColor; }
+    const mDepegSub = document.getElementById('rwa-m-depeg-sub');
+    if (mDepegSub) mDepegSub.innerHTML = `${selectedSym} ${sel.depeg?.toFixed(3) ?? '0.000'}% off-peg`;
+
+    const mUtil = document.getElementById('rwa-m-util');
+    if (mUtil) { mUtil.textContent = utilScore.toFixed(1); mUtil.style.color = utilColor; }
+    const mUtilSub = document.getElementById('rwa-m-util-sub');
+    if (mUtilSub) mUtilSub.innerHTML = `${selectedSym} util ${sel.util?.toFixed(1) ?? '—'}%`;
+
+    const fEq = document.getElementById('rwa-formula-eq');
+    if (fEq) fEq.innerHTML =
+      `score = exitDepth(<span class="eq-label">50%</span>) + ${selectedSym} depeg(<span class="eq-label">30%</span>) + ${selectedSym} util(<span class="eq-label">20%</span>)<br>` +
+      `<span class="eq-label">&nbsp;=&nbsp;</span>` +
+      `<span style="color:${exitColor};font-size:15px;">${exitScore.toFixed(1)}</span>` +
+      `<span class="eq-label"> + </span><span style="color:${depegColor};font-size:15px;">${depegScore.toFixed(1)}</span>` +
+      `<span class="eq-label"> + </span><span style="color:${utilColor};font-size:15px;">${utilScore.toFixed(1)}</span>` +
+      `<span class="eq-label"> = </span><span style="color:${exitColor};font-size:20px;font-weight:700;">${data.score}</span>`;
+
+    // Panel 2: Exit Depth live summary (regime-aware)
+    const edSummary = document.getElementById('exit-depth-summary');
+    if (edSummary) {
+      const monitored = data.monitoredToken;
+      const regime    = data.regimeContext || 'risk_on';
+      const edOk      = data.exitDepthTotal >= data.exitDepthThreshold;
+      const edColor   = edOk ? '#00ffa0' : '#ff5050';
+      let impactVal = '—';
+      if (data.exitImpact100k != null) {
+        impactVal = data.exitImpact100k.toFixed(2) + '%';
+      } else if (monitored === 'cmETH' && liqData?.cmETH_100k != null) {
+        impactVal = liqData.cmETH_100k.toFixed(2) + '%';
+      } else if (monitored === 'mETH' && liqData?.mETH_100k != null) {
+        impactVal = liqData.mETH_100k.toFixed(2) + '%';
+      }
+
+      let reentryLine = '';
+      if (regime === 'risk_off' && data.reentryWarning) {
+        reentryLine = `<br><span style="color:#ffc800;">⚠ reentry warning — cmETH $100K impact > 2% (re-entry to risk_on may be costly)</span>`;
+      }
+
+      const modeLabel = monitored
+        ? `monitoring <span style="color:#00ffa0;font-weight:700;">${monitored}</span> (current regime: ${regime.replace('_',' ')})`
+        : `<span style="color:var(--m-muted);">LST not held — exit depth override inactive (${regime.replace('_',' ')})</span>`;
+
+      const exitNormEd = 1 - Math.min(data.exitDepthTotal / 200000, 1.0);
+      edSummary.innerHTML =
+        `${modeLabel}<br>` +
+        `$100K swap impact &nbsp;<span style="color:${edColor};font-size:14px;">${impactVal}</span> &nbsp;/ threshold −2%<br>` +
+        `exitNorm = 1 − min(exitDepth / $200K, 1.0) = <span style="color:${edColor}">${exitNormEd.toFixed(3)}</span> &nbsp;→ exit depth score = <span style="color:${edColor}">${(exitNormEd*50).toFixed(1)}</span> / 50` +
+        reentryLine;
+    }
+
+    // Panel 3: Stable selected header + table
+    const stableHeader = document.getElementById('stable-selected-header');
+    if (stableHeader && sel) {
+      const dColor = sel.depeg > 1 ? '#ff5050' : sel.depeg > 0.3 ? '#ffc800' : '#00ffa0';
+      const uColor = sel.util > 90 ? '#ff5050' : sel.util > 70 ? '#ffc800' : '#00ffa0';
+      stableHeader.innerHTML =
+        `selected &nbsp;<span style="color:#00ffa0;font-weight:700;">${selectedSym}</span>` +
+        `&nbsp;&nbsp;APY <span style="color:#00c97a;">${sel.apy?.toFixed(2)}%</span>` +
+        `&nbsp;&nbsp;depeg <span style="color:${dColor}">${sel.depeg.toFixed(3)}%</span>` +
+        `&nbsp;&nbsp;util <span style="color:${uColor}">${sel.util.toFixed(1)}%</span>` +
+        `&nbsp;&nbsp;effectiveScore <span style="color:#00ffa0;">${sel.effectiveScore?.toFixed(3)}</span>`;
+    }
+    const stableWrap = document.getElementById('stable-table-wrap');
+    if (stableWrap) {
+      stableWrap.innerHTML = `
         <table style="width:100%;border-collapse:collapse;font-size:12px;">
           <thead>
             <tr style="color:var(--m-muted);font-size:10px;text-transform:uppercase;letter-spacing:0.06em;">
@@ -438,9 +550,8 @@ async function loadRwaRisk() {
               <td style="padding:7px 12px;text-align:right;color:${i===0?'#00ffa0':'var(--m-muted)'};font-family:monospace;font-weight:${i===0?'700':'400'}">${s.effectiveScore.toFixed(3)}</td>
             </tr>`).join('')}
           </tbody>
-        </table>
-      </div>
-    `;
+        </table>`;
+    }
   } catch(e) {
     console.error('rwa-risk load failed:', e);
   }
@@ -480,11 +591,13 @@ function drawGauge(canvas, score) {
   ctx.fillText('HIGH', 162, 98);
 }
 
+let liqData = null;
 async function load() {
   try {
     const res = await fetch('/api/liquidity');
     const data = await res.json();
     if (data.error) throw new Error(data.error);
+    liqData = data;
 
     renderDepth('depth-cmETH', data.cmETH);
     renderDepth('depth-mETH',  data.mETH);
