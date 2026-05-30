@@ -87,16 +87,20 @@ utilNorm  = min(avgUtil / 90.0, 1.0)
 
 ### Exit Depth (via Odos SOR)
 
-Live simulation of a $100K swap's price impact on the current regime's primary asset (cmETH in risk-on, mETH in neutral). If the swap would move price by more than 2%, an **override** blocks risk-on execution regardless of the regime signal.
+Live simulation of a $100K swap's price impact on the current regime's primary asset (cmETH in risk-on, mETH in neutral). The impact is normalized via:
+exitNorm = clamp((|$100K swap impact| − 1) / 2, 0, 1)
+impact 1% → exitNorm 0,  impact 3% → exitNorm 1.0
+exit depth score = exitNorm × 50  (max 50 points)
+
+If no liquidity data is available, exit depth is excluded from the score calculation.
 
 ### Override Rules
 
 | Condition | Action |
 |-----------|--------|
-| Score ≥ 70 or exit depth < $200K | Force RISK_OFF |
+| Score ≥ 70 | Force RISK_OFF |
 | Score 50–69 | Cap at NEUTRAL (block RISK_ON) |
 | Score < 50 | No override — BTC regime applies |
-| $100K swap impact > 2% | Exclude from exit depth score |
 
 This is the core differentiator: **automated risk management that constrains the AI's own bullish signals.**
 
