@@ -820,6 +820,7 @@ async function executeRebalance(regime, { force = false } = {}) {
 
   const refreshed     = await getPortfolio(wallet);
   const stableBalance = refreshed.find(b => b.symbol === BRIDGE_STABLE)?.amount || 0;
+  let totalSwapAmt = 0;
   for (const target of resolvedTargets) {
     if (target.inAave) continue;
     if (target.token === BRIDGE_STABLE) continue;
@@ -827,6 +828,7 @@ async function executeRebalance(regime, { force = false } = {}) {
     if (alreadyHeld && alreadyHeld.amount > 0.001) continue;
     const swapAmt = stableBalance * target.pct * 0.999;
     if (swapAmt < 0.001) continue;
+    totalSwapAmt += swapAmt;
     try {
       await notify(`→ Buying ${target.token} (${(target.pct*100).toFixed(0)}%) — ${swapAmt.toFixed(6)} ${BRIDGE_STABLE}`);
       const odosKey = BRIDGE_STABLE + '→' + target.token;
@@ -863,11 +865,12 @@ async function executeRebalance(regime, { force = false } = {}) {
     const fromAsset = resolvedTargets?.[0]?.token || 'UNKNOWN';
     const toAsset   = finalRegimeType === 'risk_on' ? 'CMETH' : finalRegimeType === 'neutral' ? 'METH' : 'USDC';
     const rwaScore  = Math.round((rwaRisk?.score || 0) * 100);
+    const amountWei = BigInt(Math.round(totalSwapAmt * 1e6));
     const tx = await recorder.recordRebalance(
       finalRegimeType,
       fromAsset,
       toAsset,
-      0,
+      amountWei,
       rwaScore
     );
     await tx.wait();
