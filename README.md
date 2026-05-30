@@ -80,7 +80,7 @@ Composite score (0–1) measuring portfolio exit safety:
 ```
 RWA Score = exitNorm×0.50 + depegNorm×0.30 + utilNorm×0.20
 
-exitNorm  = 1 − min(exitDepth / 200,000, 1.0)   (omitted if no data)
+exitNorm  = clamp((|$100K swap impact| − 1) / 2, 0, 1)   (omitted if no data)
 depegNorm = min(maxDepeg / 2.0, 1.0)
 utilNorm  = min(avgUtil / 90.0, 1.0)
 ```
@@ -207,7 +207,7 @@ BTC signals (price, funding, OI, news)
 
 ## Demo
 
-🎥 Demo: coming soon
+🎥 [Demo Video](https://youtu.be/BLPMPH_Uz9U)
 
 ---
 

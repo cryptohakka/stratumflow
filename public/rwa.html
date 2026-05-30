@@ -129,7 +129,7 @@ html, body { background: var(--m-bg); color: var(--m-text); font-family: -apple-
       <path d="M8 14 L14 8 L20 14 L14 20 Z" stroke="#00c97a" stroke-width="1.5" fill="rgba(0,201,122,0.1)"/>
       <circle cx="14" cy="14" r="2.5" fill="#00c97a"/>
     </svg>
-    <h1>StratumFlow</h1>
+    <h1><a href="/landing" style="text-decoration:none;color:inherit;">StratumFlow</a></h1>
     <nav class="tab-nav">
       <a href="/" class="tab-link">Portfolio</a>
       <a href="/rwa" class="tab-link active">RWA</a>
@@ -193,7 +193,7 @@ html, body { background: var(--m-bg); color: var(--m-text); font-family: -apple-
         </div>
         <div class="rwa-rule-box">
           <div class="rwa-rule-title">Override Rules</div>
-          <div class="rwa-rule-row"><span class="rwa-rule-pill red">score ≥ 70 or exit depth &lt; $200K</span><span class="rwa-rule-arrow">→</span><span class="rwa-rule-result">Force RISK_OFF</span></div>
+          <div class="rwa-rule-row"><span class="rwa-rule-pill red">score ≥ 70</span><span class="rwa-rule-arrow">→</span><span class="rwa-rule-result">Force RISK_OFF</span></div>
           <div class="rwa-rule-row"><span class="rwa-rule-pill yellow">score 50–69</span><span class="rwa-rule-arrow">→</span><span class="rwa-rule-result">Cap at NEUTRAL (block RISK_ON)</span></div>
           <div class="rwa-rule-row"><span class="rwa-rule-pill green">score &lt; 50</span><span class="rwa-rule-arrow">→</span><span class="rwa-rule-result">No override — BTC regime applies</span></div>
         </div>
@@ -470,14 +470,14 @@ async function loadRwaRisk() {
     const sel = scores[selectedSym] || { depeg: 0, util: 0 };
     const depegNorm = Math.min(sel.depeg / 2.0, 1.0);
     const utilNorm  = Math.min(sel.util / 90.0, 1.0);
-    const exitColor = !_hasExit ? '#888888' : data.exitDepthTotal < data.exitDepthThreshold ? '#ff5050' : '#00ffa0';
+    const exitColor = 'var(--m-text)';  // neutral white
     labelEl.textContent = floatScore >= 70 ? 'HIGH RISK' : floatScore >= 50 ? 'ELEVATED' : '';
     const exitNormDisplay = _hasExit ? 1 - Math.min(data.exitDepthTotal / 200000, 1.0) : null;
     const exitScore  = _hasExit ? exitNormDisplay * 50 : null;
     const depegScore = depegNorm * 30;
     const utilScore  = utilNorm * 20;
-    const depegColor = depegNorm > 0.5 ? '#ff5050' : depegNorm > 0.2 ? '#ffc800' : '#00ffa0';
-    const utilColor  = utilNorm  > 0.9 ? '#ff5050' : utilNorm  > 0.7 ? '#ffc800' : '#00ffa0';
+    const depegColor = 'var(--m-text)';  // neutral white
+    const utilColor  = 'var(--m-text)';  // neutral white
 
     const mExit = document.getElementById('rwa-m-exit');
     if (mExit) { mExit.textContent = _hasExit ? exitScore.toFixed(1) : '—'; mExit.style.color = exitColor; }
@@ -509,7 +509,7 @@ async function loadRwaRisk() {
       const monitored = data.monitoredToken;
       const regime    = data.regimeContext || 'risk_on';
       const edOk      = data.exitDepthTotal >= data.exitDepthThreshold;
-      const edColor   = edOk ? '#00ffa0' : '#ff5050';
+      const edColor   = 'var(--m-text)';  // neutral white
       let impactVal = '—';
       if (data.exitImpact100k != null) {
         impactVal = data.exitImpact100k.toFixed(2) + '%';
@@ -531,9 +531,9 @@ async function loadRwaRisk() {
       const exitNormEd = _hasExit ? 1 - Math.min(data.exitDepthTotal / 200000, 1.0) : null;
       edSummary.innerHTML =
         `${modeLabel}<br>` +
-        `$100K swap impact &nbsp;<span style="color:${edColor};font-size:14px;">${impactVal}</span> &nbsp;/ threshold −2%<br>` +
+        `$100K swap impact &nbsp;<span style="color:${edColor};font-size:14px;">${impactVal}</span> &nbsp;(score range: 1%=0 → 3%=50)<br>` +
         (_hasExit
-          ? `exitNorm = 1 − min(exitDepth / $200K, 1.0) = <span style="color:${edColor}">${exitNormEd.toFixed(3)}</span> &nbsp;→ exit depth score = <span style="color:${edColor}">${(exitNormEd*50).toFixed(1)}</span> / 50`
+          ? `exitNorm = clamp((|$100K swap impact| − 1) / 2, 0, 1) = <span style="color:${edColor}">${exitNormEd.toFixed(3)}</span><br>exit depth score = exitNorm * 50 = <span style="color:${edColor}">${exitNormEd.toFixed(3)}</span> * 50 = <span style="color:${edColor}">${(exitNormEd*50).toFixed(1)}</span>`
           : `<span style="color:#888">exit depth: awaiting first fetch (runs at top of hour)</span>`) +
         reentryLine;
     }

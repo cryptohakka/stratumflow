@@ -261,7 +261,7 @@ html, body { background: var(--m-bg); color: var(--m-text); font-family: -apple-
       <path d="M8 14 L14 8 L20 14 L14 20 Z" stroke="#00c97a" stroke-width="1.5" fill="rgba(0,201,122,0.1)"/>
       <circle cx="14" cy="14" r="2.5" fill="#00c97a"/>
     </svg>
-    <h1>StratumFlow</h1>
+    <h1><a href="/landing" style="text-decoration:none;color:inherit;">StratumFlow</a></h1>
     <nav class="tab-nav">
       <a href="/" class="tab-link active">Portfolio</a>
       <a href="/rwa" class="tab-link">RWA</a>
@@ -424,7 +424,12 @@ function addLog(line, ts) {
   const d = document.createElement('div');
   d.className = 'log-line';
   const timeStr = ts ? new Date(ts).toTimeString().slice(0, 8) : new Date().toTimeString().slice(0, 8);
-  d.textContent = timeStr + '  ' + String(line).replace(/\*\*/g, '').replace(/\*/g, '');
+  const text = timeStr + '  ' + String(line).replace(/\*\*/g, '').replace(/\*/g, '');
+  d.innerHTML = text
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
+      '<a href="$2" target="_blank" style="color:var(--m-cyan);text-decoration:none;opacity:0.85;">$1 ↗</a>')
+    .replace(/\btx:\s*(0x[0-9a-fA-F]{10,})/g,
+      'tx: <a href="https://explorer.mantle.xyz/tx/$1" target="_blank" style="color:var(--m-cyan);text-decoration:none;opacity:0.85;">$1 ↗</a>');
   el.insertBefore(d, el.firstChild);
   if (el.children.length > 100) el.removeChild(el.lastChild);
 }

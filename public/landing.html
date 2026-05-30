@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StratumFlow — Adversarial Allocation System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #080a0c;
+    --bg-card: #0d0f12;
+    --bg-card2: #111418;
+    --border: rgba(255,255,255,0.055);
+    --border-accent: rgba(74,210,149,0.22);
+    --text: #dde2e8;
+    --muted: #5a6272;
+    --muted2: #8892a0;
+    --accent: #4ad295;
+    --accent2: #3ab87f;
+    --accent3: #2d9668;
+    --accent-glow: rgba(74,210,149,0.06);
+    --accent-glow2: rgba(74,210,149,0.12);
+    --warn: #d4a855;
+    --danger: #c05050;
+    --blue: #4a90c4;
+    --mono: 'Space Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 16px;
+    line-height: 1.8;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+
+  /* subtle noise grain overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+    background-size: 200px;
+    opacity: 0.6;
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(74,210,149,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(74,210,149,0.025) 1px, transparent 1px);
+    background-size: 56px 56px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2.5rem;
+    height: 54px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(8,10,12,0.88);
+    backdrop-filter: blur(16px);
+  }
+
+  .nav-logo {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    text-decoration: none;
+  }
+
+  .nav-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.2;
+  }
+
+  .nav-badge-top {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--accent);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .nav-badge-sub {
+    font-family: var(--mono);
+    font-size: 8px;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .nav-cta {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: var(--accent);
+    color: #060d0a;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 8px 18px;
+    border-radius: 3px;
+    text-decoration: none;
+    transition: background 0.15s;
+  }
+  .nav-cta:hover { background: var(--accent2); }
+
+  /* ── HERO ── */
+  .hero {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 130px 2rem 90px;
+  }
+
+  /* radial glow behind hero */
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: 30%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 700px;
+    height: 400px;
+    background: radial-gradient(ellipse, rgba(74,210,149,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    color: var(--accent);
+    border: 1px solid var(--border-accent);
+    padding: 5px 14px;
+    border-radius: 2px;
+    margin-bottom: 2.2rem;
+    background: var(--accent-glow);
+  }
+
+  .hero-eyebrow::before {
+    content: '';
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 2.5s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .hero h1 {
+    font-size: clamp(3rem, 7.5vw, 5.8rem);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -0.025em;
+    margin-bottom: 0.3em;
+    max-width: 920px;
+  }
+
+  .hero h1 .line-accent {
+    color: var(--accent);
+    display: block;
+  }
+
+  .hero-sub-headline {
+    font-family: var(--mono);
+    font-size: clamp(0.7rem, 1.5vw, 0.85rem);
+    letter-spacing: 0.18em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 1.6rem;
+  }
+
+  .hero-desc {
+    font-size: clamp(0.95rem, 1.8vw, 1.1rem);
+    color: var(--muted2);
+    max-width: 540px;
+    line-height: 1.75;
+    margin-bottom: 2.5rem;
+  }
+
+  .hero-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 4rem;
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--accent);
+    color: #050e09;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    padding: 14px 30px;
+    border-radius: 3px;
+    text-decoration: none;
+    transition: background 0.15s, transform 0.15s;
+  }
+  .btn-primary:hover { background: var(--accent2); transform: translateY(-1px); }
+
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted2);
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.07em;
+    padding: 14px 28px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    text-decoration: none;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .btn-ghost:hover { border-color: rgba(255,255,255,0.13); color: var(--text); }
+
+  /* ── TICKER ── */
+  .ticker {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    font-family: var(--mono);
+    font-size: 11px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    background: var(--bg-card);
+    overflow: hidden;
+  }
+
+  .ticker-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-right: 1px solid var(--border);
+  }
+  .ticker-item:last-child { border-right: none; }
+
+  .ticker-label { color: var(--muted); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; }
+  .ticker-val { color: var(--text); font-size: 11px; }
+  .ticker-val.green { color: var(--accent); }
+
+  .regime-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    padding: 3px 9px;
+    border-radius: 2px;
+    border: 1px solid rgba(212,168,85,0.28);
+    background: rgba(212,168,85,0.07);
+    color: var(--warn);
+  }
+  .regime-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--warn);
+  }
+
+  /* ── STATS STRIP ── */
+  .stats-strip {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    max-width: 900px;
+    margin: 0 auto;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--bg-card);
+  }
+
+  .stat-item {
+    padding: 2rem 2.5rem;
+    border-right: 1px solid var(--border);
+    text-align: center;
+  }
+  .stat-item:last-child { border-right: none; }
+
+  .stat-num {
+    font-family: var(--mono);
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+    margin-bottom: 0.4rem;
+    letter-spacing: -0.02em;
+  }
+
+  .stat-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+    text-transform: uppercase;
+    line-height: 1.5;
+  }
+
+  /* ── SECTION ── */
+  section {
+    position: relative;
+    z-index: 1;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 80px 2rem;
+  }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    color: var(--accent3);
+    text-transform: uppercase;
+    margin-bottom: 0.9rem;
+  }
+
+  .section-title {
+    font-size: clamp(1.7rem, 3.5vw, 2.6rem);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.022em;
+    line-height: 1.3;
+    margin-bottom: 0.9rem;
+  }
+
+  .section-sub {
+    color: var(--muted2);
+    font-size: 0.95rem;
+    max-width: 500px;
+    line-height: 2;
+    margin-bottom: 3rem;
+    padding-bottom: 0.5rem;
+  }
+
+  /* ── FEATURES GRID ── */
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+
+  @media (max-width: 800px) {
+    .features-grid { grid-template-columns: 1fr 1fr; }
+    .arch-row { grid-template-columns: 1fr; }
+    .stats-strip { grid-template-columns: 1fr; }
+    .stat-item { border-right: none; border-bottom: 1px solid var(--border); }
+    .stat-item:last-child { border-bottom: none; }
+    nav { padding: 0 1.25rem; }
+    .nav-center { display: none; }
+  }
+
+  @media (max-width: 540px) {
+    .features-grid { grid-template-columns: 1fr; }
+  }
+
+  .feature-card {
+    background: var(--bg-card);
+    padding: 1.75rem;
+    padding-bottom: 2.25rem;
+    transition: background 0.2s;
+  }
+  .feature-card:hover { background: var(--bg-card2); }
+
+  .feature-icon {
+    width: 32px; height: 32px;
+    border-radius: 4px;
+    background: var(--accent-glow2);
+    border: 1px solid var(--border-accent);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 1.1rem;
+    font-size: 14px;
+  }
+
+  .feature-title {
+    font-size: 0.92rem;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-weight: 700;
+    margin-bottom: 0.45rem;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    line-height: 1.5;
+  }
+
+  .feature-desc {
+    font-size: 0.825rem;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: var(--muted2);
+    line-height: 1.75;
+    word-break: break-word;
+  }
+
+  .step-body p {
+    font-size: 0.82rem;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: var(--muted2);
+    line-height: 1.75;
+  }
+
+  .section-sub {
+    color: var(--muted2);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 0.95rem;
+    max-width: 500px;
+    line-height: 1.75;
+    margin-bottom: 3rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .hero-desc {
+    font-size: clamp(0.95rem, 1.8vw, 1.1rem);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: var(--muted2);
+    max-width: 540px;
+    line-height: 1.75;
+    margin-bottom: 2.5rem;
+  }
+
+  .cta-banner p {
+    color: var(--muted2);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    margin-bottom: 2.5rem;
+    font-size: 0.95rem;
+    max-width: 440px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.75;
+  }
+
+  .feature-tag {
+    display: inline-block;
+    margin-top: 0.9rem;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    color: var(--accent3);
+    border: 1px solid rgba(45,150,104,0.22);
+    padding: 3px 8px;
+    border-radius: 2px;
+  }
+
+  /* ── HOW IT WORKS ── */
+  .arch-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3.5rem;
+    align-items: center;
+  }
+
+  .arch-visual {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .arch-visual-header {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .win-dots { display: flex; gap: 5px; }
+  .win-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .wd-r { background: #5a3030; }
+  .wd-y { background: #4a4020; }
+  .wd-g { background: var(--accent3); }
+
+  .arch-body { padding: 1.25rem; }
+
+  .agent-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    margin-bottom: 6px;
+    background: var(--bg);
+    transition: border-color 0.2s;
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+  .agent-row:hover { border-color: var(--border-accent); }
+
+  .agent-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 3px;
+  }
+  .dot-g { background: var(--accent); box-shadow: 0 0 5px rgba(74,210,149,0.5); }
+  .dot-y { background: var(--warn); }
+  .dot-b { background: var(--blue); }
+
+  .agent-name {
+    font-weight: 700;
+    color: var(--text);
+    font-size: 10px;
+    letter-spacing: 0.07em;
+    margin-bottom: 2px;
+  }
+  .agent-role { color: var(--muted); font-size: 9px; line-height: 1.5; }
+
+  .arch-connector {
+    text-align: center;
+    padding: 3px 0;
+    color: var(--border-accent);
+    font-family: var(--mono);
+    font-size: 14px;
+  }
+
+  .arch-output {
+    margin-top: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--border-accent);
+    border-radius: 4px;
+    background: var(--accent-glow);
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--accent);
+    letter-spacing: 0.07em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .arch-output::before {
+    content: '✓';
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: rgba(74,210,149,0.15);
+    font-size: 9px;
+    flex-shrink: 0;
+  }
+
+  .steps { display: flex; flex-direction: column; gap: 1.8rem; }
+
+  .step { display: flex; gap: 1.1rem; align-items: flex-start; }
+
+  .step-num {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--accent3);
+    border: 1px solid rgba(45,150,104,0.25);
+    border-radius: 3px;
+    width: 26px; height: 26px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    background: var(--accent-glow);
+  }
+
+  .step-body h4 {
+    font-size: 0.9rem;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+    color: var(--text);
+    letter-spacing: -0.005em;
+    line-height: 1.5;
+  }
+
+  .step-body p {
+    font-size: 0.82rem;
+    color: var(--muted2);
+    line-height: 2;
+    padding-bottom: 0.25rem;
+    overflow: visible;
+  }
+
+  /* ── DIVIDER ── */
+  .divider {
+    position: relative; z-index: 1;
+    height: 1px;
+    background: var(--border);
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .divider-full {
+    position: relative; z-index: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── CTA BANNER ── */
+  .cta-banner {
+    position: relative;
+    z-index: 1;
+    background: var(--bg-card);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    text-align: center;
+    padding: 90px 2rem;
+    overflow: hidden;
+  }
+
+  .cta-banner::before {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 600px; height: 300px;
+    background: radial-gradient(ellipse, rgba(74,210,149,0.05) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .cta-banner h2 {
+    font-size: clamp(1.8rem, 4vw, 2.8rem);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.022em;
+    margin-bottom: 0.9rem;
+    line-height: 1.3;
+  }
+
+  .cta-banner p {
+    color: var(--muted2);
+    margin-bottom: 2.5rem;
+    font-size: 0.95rem;
+    max-width: 440px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 2;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    position: relative; z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.4rem 2.5rem;
+    border-top: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .footer-links { display: flex; gap: 1.5rem; }
+  .footer-links a { color: var(--muted); text-decoration: none; letter-spacing: 0.06em; transition: color 0.15s; }
+  .footer-links a:hover { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo" style="display:flex;align-items:center;gap:8px;">
+    <svg width="22" height="22" viewBox="0 0 28 28" fill="none">
+      <circle cx="14" cy="14" r="13" stroke="#4ad295" stroke-width="1.5"/>
+      <path d="M8 14 L14 8 L20 14 L14 20 Z" stroke="#4ad295" stroke-width="1.5" fill="rgba(74,210,149,0.1)"/>
+      <circle cx="14" cy="14" r="2.5" fill="#4ad295"/>
+    </svg>
+    STRATUMFLOW
+  </a>
+  <div class="nav-center">
+    <span class="nav-badge-top">Mantle Turing Test 2026</span>
+    <span class="nav-badge-sub">Autonomous On-Chain Intelligence</span>
+  </div>
+  <a href="https://stratumflow.a2aflow.space/" class="nav-cta">
+    Launch App
+    <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M1.5 9.5L9.5 1.5M9.5 1.5H4M9.5 1.5V7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+  </a>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-eyebrow">LIVE ON MANTLE MAINNET</div>
+
+  <h1>
+    Triple-A AI<br>
+    <span class="line-accent">Adversarial</span>
+    Allocation System
+  </h1>
+
+  <p class="hero-sub-headline">Liquidity-aware · Regime-adaptive · Onchain-auditable</p>
+
+  <p class="hero-desc">
+    Three adversarial AI agents continuously debate market regime and rebalance your portfolio across RWA-backed yield instruments — every decision recorded immutably on Mantle.
+  </p>
+
+  <div class="hero-actions">
+    <a href="https://stratumflow.a2aflow.space/" class="btn-primary">
+      Open App
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 11.5L11.5 1.5M11.5 1.5H4.5M11.5 1.5V8.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </a>
+    <a href="https://explorer.mantle.xyz/address/0x3d99E72229BF6DD14697751971C81D93529BeEff" class="btn-ghost" target="_blank">
+      RebalanceRecorder ↗
+    </a>
+  </div>
+
+  <div class="ticker">
+    <div class="ticker-item">
+      <span class="ticker-label">Network</span>
+      <span class="ticker-val green">Mantle</span>
+    </div>
+    <div class="ticker-item">
+      <span class="ticker-label">Agents</span>
+      <span class="ticker-val green">3 active</span>
+    </div>
+    <div class="ticker-item">
+      <span class="ticker-label">Regime</span>
+      <span class="regime-pill"><span class="regime-dot"></span>NEUTRAL</span>
+    </div>
+    <div class="ticker-item">
+      <span class="ticker-label">Cycle</span>
+      <span class="ticker-val">15 min</span>
+    </div>
+    <div class="ticker-item">
+      <span class="ticker-label">Protocol</span>
+      <span class="ticker-val">A2A</span>
+    </div>
+  </div>
+</div>
+
+<div class="divider-full"></div>
+
+<!-- STATS STRIP -->
+<div style="position:relative;z-index:1;padding:3rem 2rem;">
+  <div class="stats-strip">
+    <div class="stat-item">
+      <div class="stat-num">15m</div>
+      <div class="stat-label">Detection Cycle<br>Always-on regime watch</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">3</div>
+      <div class="stat-label">Adversarial Agents<br>Architect · Auditor · Arbiter</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">100%</div>
+      <div class="stat-label">On-chain Decisions<br>Immutable audit trail</div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- FEATURES -->
+<section>
+  <div class="section-label">// system primitives</div>
+  <h2 class="section-title">Built for volatile markets,<br>anchored in real yields</h2>
+  <p class="section-sub">StratumFlow detects macro regime shifts and autonomously routes capital between RWA-backed instruments — not speculation, structured yield.</p>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">⚡</div>
+      <div class="feature-title">Adversarial AI Council</div>
+      <div class="feature-desc">Architect proposes. Auditor stress-tests risk and liquidity. Arbiter resolves with probability-weighted consensus. No single point of failure.</div>
+      <span class="feature-tag">Triple-A Framework</span>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon">🎯</div>
+      <div class="feature-title">Regime-Adaptive Allocation</div>
+      <div class="feature-desc">Risk-on loads cmETH 70% + best Aave stable 30%. Neutral holds mETH 50% + best Aave stable 50%. Risk-off goes 100% best Aave stable. Stable selected dynamically by risk-adjusted score. Regime confidence scored continuously.</div>
+      <span class="feature-tag">3 Regimes · Live</span>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon">🔗</div>
+      <div class="feature-title">Fully On-Chain Audit Trail</div>
+      <div class="feature-desc">Every regime change triggers a contract call. Reasoning → execution → immutable trace. No black box — every AI verdict verifiable on-chain.</div>
+      <span class="feature-tag">PositionRecorder</span>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon">🛡️</div>
+      <div class="feature-title">RWA Liquidity Risk Monitor</div>
+      <div class="feature-desc">Continuous exit depth analysis on cmETH and mETH via live pricing feeds. Liquidity-adjusted scoring with automatic override rules to guard illiquid exits.</div>
+      <span class="feature-tag">DefiLlama · Real-time</span>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon">💧</div>
+      <div class="feature-title">Dynamic Stable Selection</div>
+      <div class="feature-desc">Compares USDe, USDC, USDT0, and GHO across base APY and MNT reward incentives every cycle. Always routes to the highest risk-adjusted yield.</div>
+      <span class="feature-tag">Aave v3 Mantle</span>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon">⚙️</div>
+      <div class="feature-title">Agent-Native Protocol</div>
+      <div class="feature-desc">Full A2A task API. Machine-to-machine composable, built for multi-agent orchestration at scale.</div>
+      <span class="feature-tag">A2A Protocol</span>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- HOW IT WORKS -->
+<section>
+  <div class="section-label">// the Triple-A loop</div>
+  <h2 class="section-title">Every 15 minutes,<br>the council wakes up</h2>
+  <p class="section-sub">Market data in. Adversarial debate. Verdict on-chain. The system never sleeps.</p>
+
+  <div class="arch-row">
+    <!-- Triple-A SVG diagram -->
+    <div style="display:flex;flex-direction:column;gap:1rem;">
+      <div class="arch-visual" style="padding:0;overflow:hidden;">
+        <div class="arch-visual-header">
+          <div class="win-dots">
+            <div class="win-dot wd-r"></div>
+            <div class="win-dot wd-y"></div>
+            <div class="win-dot wd-g"></div>
+          </div>
+          <span>Triple-A agent council</span>
+        </div>
+        <svg viewBox="0 0 320 290" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;padding:1rem;">
+          <defs>
+            <marker id="arr" markerWidth="8" markerHeight="8" refX="4" refY="3" orient="auto">
+              <path d="M0 0 L0 6 L6 3 Z" fill="rgba(74,210,149,0.4)"/>
+            </marker>
+          </defs>
+
+          <!-- connecting lines -->
+          <line x1="160" y1="94" x2="100" y2="158" stroke="rgba(74,210,149,0.2)" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+          <line x1="160" y1="94" x2="220" y2="158" stroke="rgba(74,210,149,0.2)" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+          <line x1="106" y1="196" x2="214" y2="196" stroke="rgba(74,210,149,0.15)" stroke-width="1" stroke-dasharray="4,3"/>
+
+          <!-- verdict line to bottom -->
+          <line x1="160" y1="233" x2="160" y2="255" stroke="rgba(74,210,149,0.3)" stroke-width="1" marker-end="url(#arr)"/>
+
+          <!-- ARCHITECT node -->
+          <circle cx="160" cy="52" r="42" fill="rgba(74,210,149,0.06)" stroke="rgba(74,210,149,0.35)" stroke-width="1.5"/>
+          <circle cx="160" cy="52" r="4" fill="#4ad295"/>
+          <text x="160" y="38" text-anchor="middle" font-family="Space Mono,monospace" font-size="8" fill="#4ad295" letter-spacing="1">ARCHITECT</text>
+          <text x="160" y="72" text-anchor="middle" font-family="Space Mono,monospace" font-size="7" fill="rgba(74,210,149,0.5)">propose</text>
+
+          <!-- AUDITOR node -->
+          <circle cx="68" cy="196" r="38" fill="rgba(212,168,85,0.05)" stroke="rgba(212,168,85,0.3)" stroke-width="1.5"/>
+          <circle cx="68" cy="196" r="3.5" fill="#d4a855"/>
+          <text x="68" y="183" text-anchor="middle" font-family="Space Mono,monospace" font-size="8" fill="#d4a855" letter-spacing="1">AUDITOR</text>
+          <text x="68" y="213" text-anchor="middle" font-family="Space Mono,monospace" font-size="7" fill="rgba(212,168,85,0.5)">challenge</text>
+
+          <!-- ARBITER node -->
+          <circle cx="252" cy="196" r="38" fill="rgba(74,144,196,0.05)" stroke="rgba(74,144,196,0.3)" stroke-width="1.5"/>
+          <circle cx="252" cy="196" r="3.5" fill="#4a90c4"/>
+          <text x="252" y="183" text-anchor="middle" font-family="Space Mono,monospace" font-size="8" fill="#4a90c4" letter-spacing="1">ARBITER</text>
+          <text x="252" y="213" text-anchor="middle" font-family="Space Mono,monospace" font-size="7" fill="rgba(74,144,196,0.5)">resolve</text>
+
+          <!-- output box -->
+          <rect x="90" y="258" width="140" height="22" rx="3" fill="rgba(74,210,149,0.06)" stroke="rgba(74,210,149,0.25)" stroke-width="1"/>
+          <text x="160" y="273" text-anchor="middle" font-family="Space Mono,monospace" font-size="8" fill="#4ad295" letter-spacing="0.5">recordRegimeChange() ✓</text>
+
+          <!-- animated pulse on architect -->
+          <circle cx="160" cy="52" r="42" fill="none" stroke="rgba(74,210,149,0.15)" stroke-width="1">
+            <animate attributeName="r" values="42;56;42" dur="3s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.4;0;0.4" dur="3s" repeatCount="indefinite"/>
+          </circle>
+        </svg>
+      </div>
+
+      <!-- Regime allocation visual -->
+      <div class="arch-visual" style="padding:1rem 1.25rem;">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.75rem;">// regime → allocation</div>
+        <div style="display:flex;flex-direction:column;gap:6px;font-family:var(--mono);font-size:10px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="width:56px;color:#4ad295;letter-spacing:0.06em;">RISK-ON</span>
+            <div style="flex:1;height:20px;background:var(--bg);border:1px solid var(--border);border-radius:2px;overflow:hidden;display:flex;">
+              <div style="width:70%;background:rgba(74,210,149,0.2);border-right:1px solid rgba(74,210,149,0.3);display:flex;align-items:center;justify-content:center;font-size:8px;color:#4ad295;">cmETH 70%</div>
+              <div style="width:30%;display:flex;align-items:center;justify-content:center;font-size:8px;color:var(--muted);">Aave stable 30%</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="width:56px;color:#d4a855;letter-spacing:0.06em;">NEUTRAL</span>
+            <div style="flex:1;height:20px;background:var(--bg);border:1px solid var(--border);border-radius:2px;overflow:hidden;display:flex;">
+              <div style="width:50%;background:rgba(212,168,85,0.15);border-right:1px solid rgba(212,168,85,0.25);display:flex;align-items:center;justify-content:center;font-size:8px;color:#d4a855;">mETH 50%</div>
+              <div style="width:50%;display:flex;align-items:center;justify-content:center;font-size:8px;color:var(--muted);">Aave stable 50%</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="width:56px;color:#c05050;letter-spacing:0.06em;">RISK-OFF</span>
+            <div style="flex:1;height:20px;background:var(--bg);border:1px solid var(--border);border-radius:2px;overflow:hidden;display:flex;">
+              <div style="width:100%;background:rgba(192,80,80,0.12);display:flex;align-items:center;justify-content:center;font-size:8px;color:#c05050;">Aave stable 100%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-body">
+          <h4>Market data ingestion</h4>
+          <p>BTC/ETH price, funding rates, open interest, and volatility indices aggregated every cycle from live feeds.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-body">
+          <h4>Adversarial debate</h4>
+          <p>Architect proposes a regime. Auditor stress-tests against RWA exit depth and liquidity data. Arbiter resolves with a confidence score.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-body">
+          <h4>On-chain execution</h4>
+          <p>Regime change triggers PositionRecorder contract. Swaps routed via Odos or Merchant Moe LB with best-price execution.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">04</div>
+        <div class="step-body">
+          <h4>Allocation settles</h4>
+          <p>New position lands on-chain. Full audit trail visible in-app and on Mantle Explorer (RebalanceRecorder). The loop restarts in 15 minutes.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="cta-banner">
+  <h2>See the agents<br>think in real time</h2>
+  <p>Watch live regime detection, RWA liquidity scoring, and on-chain rebalancing — no wallet required to explore.</p>
+  <a href="https://stratumflow.a2aflow.space/" class="btn-primary">
+    Open StratumFlow
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" style="margin-left:4px"><path d="M1.5 11.5L11.5 1.5M11.5 1.5H4.5M11.5 1.5V8.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+  </a>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <span>© 2026 <a href="https://a2aflow.space" style="color:var(--accent);text-decoration:none;">a2aflow.space</a> — built by <a href="https://github.com/cryptohakka" style="color:var(--accent3);text-decoration:none;">cryptohakka</a></span>
+  <div class="footer-links">
+    <a href="https://stratumflow.a2aflow.space/">App</a>
+    <a href="https://explorer.mantle.xyz/address/0x3d99E72229BF6DD14697751971C81D93529BeEff" target="_blank">Explorer</a>
+    <a href="https://github.com/cryptohakka" target="_blank">GitHub</a>
+  </div>
+</footer>
+
+</body>
+</html>
