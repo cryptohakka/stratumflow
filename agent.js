@@ -616,23 +616,28 @@ async function fetchRwaRisk(regimeType = 'risk_on') {
       mETH_100k  = lastEntry.mETH_100k;  mETH_500k  = lastEntry.mETH_500k;
     }
   } catch (e) { console.warn('[rwa] exit depth read:', e.message); }
-
-  const cmOk = cmETH_100k !== null && cmETH_100k > -2;
-  const meOk = mETH_100k  !== null && mETH_100k  > -2;
+  // exitNorm: linear 0→1 as |impact| goes from 1%→3%
+  const calcExitNorm = (impact) => {
+    if (impact === null) return null;
+    const abs = Math.abs(impact);
+    return Math.max(0, Math.min((abs - 1) / 2, 1));
+  };
   let monitoredToken = null;
   let reentryWarning = false;
+  let exitNormRaw = null;
   if (regimeType === 'risk_on') {
     monitoredToken = 'cmETH';
-    exitDepthTotal = cmETH_100k === null ? null : (cmOk ? 200000 : 0);
+    exitNormRaw = calcExitNorm(cmETH_100k);
   } else if (regimeType === 'neutral') {
     monitoredToken = 'mETH';
-    exitDepthTotal = mETH_100k === null ? null : (meOk ? 200000 : 0);
+    exitNormRaw = calcExitNorm(mETH_100k);
   } else {
     monitoredToken = null;
-    exitDepthTotal = EXIT_DEPTH_THRESHOLD * 2;
-    reentryWarning = !cmOk;
+    exitNormRaw = 0;
+    reentryWarning = cmETH_100k !== null && Math.abs(cmETH_100k) >= 2;
   }
-  console.log(`[rwa] exit depth cmETH=${cmETH_100k?.toFixed(2)}% mETH=${mETH_100k?.toFixed(2)}% monitored=${monitoredToken}`);
+  exitDepthTotal = exitNormRaw === null ? null : Math.round((1 - exitNormRaw) * 200000);
+  console.log(`[rwa] exit depth cmETH=${cmETH_100k?.toFixed(2)}% mETH=${mETH_100k?.toFixed(2)}% monitored=${monitoredToken} exitNorm=${exitNormRaw?.toFixed(3)}`);
 
   let stableScores = {};
   let selectedSym = 'USDC';
@@ -649,16 +654,15 @@ async function fetchRwaRisk(regimeType = 'risk_on') {
   } catch (e) { console.warn('[rwa] stableScores:', e.message); }
   const selectedStable = stableScores[selectedSym] || { depeg: 0, util: 0 };
   // exitNorm: null if no data, else 1 - min(exitDepthTotal / 200K, 1.0)
-  const hasExitData = exitDepthTotal !== null;
-  const exitNorm = hasExitData ? 1 - Math.min(exitDepthTotal / 200000, 1.0) : null;
+  const hasExitData = exitNormRaw !== null;
+  const exitNorm = exitNormRaw;
   const depegNorm = Math.min(selectedStable.depeg / 2.0,  1.0);
   const utilNorm  = Math.min(selectedStable.util  / 90.0, 1.0);
-  const score = exitNorm !== null
+  const score = hasExitData
     ? Math.round((exitNorm * 0.50 + depegNorm * 0.30 + utilNorm * 0.20) * 100)
     : Math.round((depegNorm * 0.60 + utilNorm * 0.40) * 100);
-
-  const override = (hasExitData && exitDepthTotal < EXIT_DEPTH_THRESHOLD) ? 'risk_off'
-    : score >= 70 ? 'risk_off'
+  // override: score-based only (exitNorm feeds into score via 50% weight)
+  const override = score >= 70 ? 'risk_off'
     : score >= 50 ? 'neutral_cap'
     : null;
 
@@ -780,17 +784,10 @@ async function executeRebalance(regime, { force = false } = {}) {
 
   const BRIDGE_STABLE = 'USDC';
 
-  const targetAaveSymbols = new Set(
-    resolvedTargets.filter(t => t.inAave).map(t => t.token)
-  );
   const aaveHoldings = await getAaveBalances(wallet);
   for (const h of aaveHoldings) {
     if (h.amount < 0.0001) continue;
     const sym = h.symbol.replace(/^a/, '');
-    if (targetAaveSymbols.has(sym)) {
-      console.log(`[rebalance] skipping withdraw ${h.symbol} — already target`);
-      continue;
-    }
     try {
       await notify(`🏦 Withdrawing ${h.amount.toFixed(6)} ${h.symbol} from Aave`);
       await aaveWithdraw(sym, null);
@@ -815,7 +812,7 @@ async function executeRebalance(regime, { force = false } = {}) {
       const txHash = ['METH→USDC','CMETH→USDC'].includes(odosKey2)
         ? await executeOdosSwap(holding.symbol, BRIDGE_STABLE, holding.amount * 0.999)
           : await executeSwap(holding.symbol, BRIDGE_STABLE, holding.amount * 0.999);
-      await notify(`✅ Sold ${holding.symbol} — [tx](https://explorer.mantle.xyz/tx/${txHash})`);
+      await notify(`✅ Sold ${holding.symbol} — tx: ${txHash}`);
     } catch (e) {
       await notify(`⚠️ Swap failed ${holding.symbol}→${BRIDGE_STABLE}: ${e.message?.slice(0, 80)}`);
     }
@@ -836,7 +833,7 @@ async function executeRebalance(regime, { force = false } = {}) {
       const txHash = ['USDC→METH','USDC→CMETH'].includes(odosKey)
         ? await executeOdosSwap(BRIDGE_STABLE, target.token, swapAmt)
           : await executeSwap(BRIDGE_STABLE, target.token, swapAmt);
-      await notify(`✅ Bought ${target.token} — [tx](https://explorer.mantle.xyz/tx/${txHash})`);
+      await notify(`✅ Bought ${target.token} — tx: ${txHash}`);
     } catch (e) {
       await notify(`⚠️ Swap failed ${BRIDGE_STABLE}→${target.token}: ${e.message?.slice(0, 80)}`);
     }
@@ -851,7 +848,7 @@ async function executeRebalance(regime, { force = false } = {}) {
     try {
       await notify(`🏦 Depositing ${held.amount.toFixed(6)} ${target.token} → Aave`);
       const txHash = await aaveDeposit(target.token, held.amount * 0.999);
-      await notify(`✅ Deposited ${target.token} — [tx](https://explorer.mantle.xyz/tx/${txHash})`);
+      await notify(`✅ Deposited ${target.token} — tx: ${txHash}`);
     } catch (e) {
       await notify(`⚠️ Aave deposit failed (${target.token}): ${e.message?.slice(0, 80)}`);
     }
@@ -874,7 +871,7 @@ async function executeRebalance(regime, { force = false } = {}) {
       rwaScore
     );
     await tx.wait();
-    await notify(`🔗 **On-chain recorded** — [tx](https://explorer.mantle.xyz/tx/${tx.hash})`);
+    await notify(`🔗 On-chain recorded — tx: ${tx.hash}`);
   } catch (e) {
     console.warn('[recorder] recordRebalance failed:', e.message?.slice(0, 80));
   }
