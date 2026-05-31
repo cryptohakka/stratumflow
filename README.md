@@ -29,7 +29,7 @@ The system continuously measures:
 
 StratumFlow is a Triple-A AI-driven portfolio rebalancer built on Mantle's RWA infrastructure. It runs a continuous regime detection loop — analyzing BTC market signals via a three-agent debate council — and autonomously rebalances between Mantle's yield-bearing assets according to the detected regime.
 
-Regime detection runs every 30 minutes. A2A-compatible API allows external agent orchestration.
+Regime detection runs every 15 minutes. A2A-compatible API allows external agent orchestration.
 
 ---
 
@@ -123,7 +123,7 @@ This is the core differentiator: **automated risk management that constrains the
 BTC signals (price, funding, OI, news)
         │
    ┌────▼────────────────────┐
-   │   Triple-A Council      │  ← continuous 30min autonomous loop
+   │   Triple-A Council      │  ← continuous 15min autonomous loop
    │  Architect→Auditor→Arbiter │
    └────────────┬────────────┘
                 │ regime + confidence
